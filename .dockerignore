@@ -5,3 +5,4 @@ __pycache__
 .git
 data/index
 eval/reports/*.md
+eval/reports/*.jsonl

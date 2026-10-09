@@ -1,0 +1,11 @@
+# Streamlit settings, used locally, in Docker and on Streamlit Community Cloud.
+
+[server]
+# The file watcher tracks the folder of every imported module. With PyTorch and
+# transformers loaded (hybrid search), startup hung for 5+ minutes on Windows; with
+# the watcher off the app was ready in about a minute. See docs/DECISIONS.md #19.
+# For auto-reload while editing: streamlit run app.py --server.fileWatcherType auto
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false
