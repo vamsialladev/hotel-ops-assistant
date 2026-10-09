@@ -6,3 +6,11 @@ venv/
 data/index/
 .DS_Store
 data/feedback.jsonl
+.coverage
+.pytest_cache/
+.ruff_cache/
+# Runtime logs and counters: may contain questions as typed by staff. Never commit.
+data/*.jsonl
+data/*.json
+logs/
+.streamlit/secrets.toml
