@@ -1,0 +1,168 @@
+"""Load messy hotel documents, split them into chunks, and build the search index.
+
+Run:  python -m src.ingest
+"""
+
+import json
+import re
+from collections import Counter
+from dataclasses import asdict, dataclass
+from pathlib import Path
+
+import numpy as np
+
+from src.config import EMBED_MODEL, INDEX_DIR, RAW_DIR, USE_EMBEDDINGS
+
+SUPPORTED = {".md", ".txt", ".pdf"}
+FRONT_MATTER = re.compile(r"^---\n(.*?)\n---\n", re.S)
+MAX_CHARS = 1200
+
+
+@dataclass
+class Chunk:
+    id: str
+    text: str
+    property: str  # folder name, e.g. "beach-resort" or "shared"
+    source: str  # file path relative to data/raw
+    section: str  # heading path, e.g. "Policies > Pets"
+    page: int | None  # PDF page number, if any
+    effective: str | None
+
+
+def contextual_text(chunk: dict) -> str:
+    """Text used for search: adds property + section so a chunk that just says
+    '$75 per stay' can still be found by a question about Miami pets."""
+    return f"Property: {chunk['property']}\nSection: {chunk['section']}\n{chunk['text']}"
+
+
+def parse_front_matter(text: str):
+    match = FRONT_MATTER.match(text)
+    if not match:
+        return {}, text
+    meta = {}
+    for line in match.group(1).splitlines():
+        if ":" in line:
+            key, value = line.split(":", 1)
+            meta[key.strip().lower()] = value.strip()
+    return meta, text[match.end() :]
+
+
+def split_by_headings(body: str):
+    """Section-aware chunking: one chunk per heading, keeping the heading path.
+    Long sections are split on blank lines, which never cuts a table in half."""
+    sections, path, buf = [], [], []
+
+    def flush():
+        text = "\n".join(buf).strip()
+        if text:
+            sections.append((" > ".join(path) or "Intro", text))
+        buf.clear()
+
+    for line in body.splitlines():
+        heading = re.match(r"^(#{1,6})\s+(.*)", line)
+        if heading:
+            flush()
+            level = len(heading.group(1))
+            path[:] = path[: level - 1] + [heading.group(2).strip()]
+        else:
+            buf.append(line)
+    flush()
+
+    out = []
+    for section, text in sections:
+        if len(text) <= MAX_CHARS:
+            out.append((section, text))
+            continue
+        current = ""
+        for block in re.split(r"\n\s*\n", text):
+            if current and len(current) + len(block) > MAX_CHARS:
+                out.append((section, current))
+                current = block
+            else:
+                current = f"{current}\n\n{block}" if current else block
+        if current:
+            out.append((section, current))
+    return out
+
+
+def split_notes(text: str):
+    """Informal notes files: each blank-line-separated note becomes its own chunk."""
+    blocks = [b.strip() for b in re.split(r"\n\s*\n", text) if b.strip()]
+    return [("Staff notes", b) for b in blocks]
+
+
+def load_pdf_pages(path: Path):
+    """Yield (page_number, text) with repeated headers/footers removed."""
+    from pypdf import PdfReader
+
+    pages = [(p.extract_text() or "") for p in PdfReader(str(path)).pages]
+    repeated = set()
+    if len(pages) > 2:
+        # Digits are masked so "Page 1 of 3" and "Page 2 of 3" count as the same footer.
+        counts = Counter(normalize_line(line) for page in pages for line in set(page.splitlines()) if line.strip())
+        repeated = {line for line, n in counts.items() if n >= max(2, int(len(pages) * 0.6))}
+    for number, page in enumerate(pages, 1):
+        lines = [line for line in page.splitlines() if normalize_line(line) not in repeated]
+        yield number, "\n".join(lines)
+
+
+def normalize_line(line: str) -> str:
+    return re.sub(r"\d+", "#", line.strip())
+
+
+def load_chunks():
+    chunks = []
+    for path in sorted(RAW_DIR.rglob("*")):
+        if path.suffix.lower() not in SUPPORTED:
+            continue
+        rel = path.relative_to(RAW_DIR).as_posix()
+        prop = path.relative_to(RAW_DIR).parts[0]
+
+        if path.suffix.lower() == ".pdf":
+            for page, text in load_pdf_pages(path):
+                if len(text.strip()) < 30:
+                    print(f"  ! {rel} page {page}: almost no text (scanned page? needs OCR)")
+                    continue
+                for j, (_, piece) in enumerate(split_by_headings(text)):
+                    chunks.append(Chunk(f"{rel}#p{page}-{j}", piece, prop, rel, f"Page {page}", page, None))
+            continue
+
+        meta, body = parse_front_matter(path.read_text(encoding="utf-8"))
+        if meta.get("status", "").lower() == "superseded":
+            print(f"  - skipping superseded document: {rel}")
+            continue
+        pieces = split_by_headings(body) if path.suffix.lower() == ".md" else split_notes(body)
+        for j, (section, piece) in enumerate(pieces):
+            chunks.append(Chunk(f"{rel}#{j}", piece, prop, rel, section, None, meta.get("effective")))
+    return [asdict(c) for c in chunks]
+
+
+def build_index(use_embeddings: bool = True):
+    print(f"Reading documents from {RAW_DIR}")
+    chunks = load_chunks()
+    INDEX_DIR.mkdir(parents=True, exist_ok=True)
+    (INDEX_DIR / "chunks.json").write_text(json.dumps(chunks, indent=2), encoding="utf-8")
+
+    if use_embeddings:
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError:
+            print("  ! sentence-transformers not installed: keyword search only")
+            print("    (for hybrid search: pip install -r requirements-hybrid.txt)")
+            use_embeddings = False
+    if use_embeddings:
+        model = SentenceTransformer(EMBED_MODEL)
+        vectors = model.encode([contextual_text(c) for c in chunks], normalize_embeddings=True, show_progress_bar=True)
+        np.save(INDEX_DIR / "vectors.npy", vectors)
+
+    by_prop = Counter(c["property"] for c in chunks)
+    print(f"Indexed {len(chunks)} chunks: {dict(by_prop)}")
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--bm25-only", action="store_true", help="skip embeddings (no model download)")
+    args = parser.parse_args()
+    build_index(use_embeddings=USE_EMBEDDINGS and not args.bm25_only)

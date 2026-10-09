@@ -1,0 +1,20 @@
+[project]
+name = "hotel-ops-assistant"
+version = "1.2.0"
+description = "AI policy assistant for hotel front-desk staff: cited answers from messy hotel documents."
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+# The CLI runner is exercised by the CI retrieval gate; its grading logic lives in eval/metrics.py and is unit-tested.
+omit = ["eval/run_eval.py"]

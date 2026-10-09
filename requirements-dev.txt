@@ -1,0 +1,7 @@
+# Development and CI tools
+-r requirements-hybrid.txt
+pytest~=9.1
+pytest-cov~=7.1
+ruff==0.16.10
+reportlab~=5.0
+pillow~=12.3

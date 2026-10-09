@@ -1,0 +1,25 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install (lightweight, no embedding model)
+        run: pip install -r requirements.txt "pytest~=9.1" "pytest-cov~=7.1" "ruff==0.16.10"
+      - name: Lint and format check
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Unit tests with coverage
+        run: python -m pytest -q --cov=src --cov=eval --cov-report=term-missing --cov-fail-under=70
+      - name: Retrieval regression gate
+        run: |
+          python -m src.ingest --bm25-only
+          python -m eval.run_eval --bm25-only --min-hit 0.85 --no-report

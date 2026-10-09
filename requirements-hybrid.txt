@@ -1,0 +1,3 @@
+# Adds semantic search (embeddings). Installs PyTorch, so it's large.
+-r requirements.txt
+sentence-transformers~=6.1
