@@ -79,6 +79,7 @@ def main():
     # ---- Answers (optional, can repeat) ----
     run_scores, latencies, tokens_in, tokens_out = [], [], 0, 0
     totals = defaultdict(int)
+    raw = []  # every answer from every run, saved next to the report so failures can be audited
     if args.answers:
         for run in range(args.runs):
             correct = 0
@@ -90,6 +91,15 @@ def main():
                 tokens_out += result["usage"]["output_tokens"]
                 g = grade(item, result)
                 correct += g["correct"]
+                raw.append(
+                    {
+                        "run": run + 1,
+                        "id": item["id"],
+                        "answer": result["answer"],
+                        "cited": [c["source"] for c in result["citations"]],
+                        **g,
+                    }
+                )
                 if item.get("unanswerable"):
                     totals["refuse_n"] += 1
                     totals["refuse_ok"] += g["correct"]
@@ -129,7 +139,7 @@ def main():
 
     if not args.no_report:
         stamp = datetime.now().strftime("%Y-%m-%d_%H%M")
-        report = HERE / "reports" / f"{stamp}_{setup}{'_answers' if args.answers else ''}.md"
+        report = HERE / "reports" / f"{stamp}_{setup}{f'_answers_{LLM_MODEL}' if args.answers else ''}.md"
         report.parent.mkdir(exist_ok=True)
         out = [f"# Eval report {stamp}", "", *[f"- {s}" for s in summary], "", "## Retrieval by category", ""]
         out += ["| Category | Hits |", "|---|---|"] + [f"| {c} | {ok}/{n} |" for c, (ok, n) in sorted(by_cat.items())]
@@ -145,6 +155,10 @@ def main():
             out.append("| " + " | ".join(cells) + " |")
         report.write_text("\n".join(out) + "\n", encoding="utf-8")
         print(f"Report saved: {report.relative_to(HERE.parent)}")
+        if raw:
+            dump = report.with_suffix(".jsonl")
+            dump.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in raw), encoding="utf-8")
+            print(f"Raw answers saved: {dump.relative_to(HERE.parent)}")
 
     if hit_rate < args.min_hit:
         sys.exit(f"FAIL: retrieval {hit_rate:.0%} is below the minimum {args.min_hit:.0%}")
