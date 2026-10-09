@@ -16,5 +16,7 @@ select = ["E", "F", "I", "B", "UP"]
 testpaths = ["tests"]
 
 [tool.coverage.run]
+# Measure the product code only; counting tests/ inflated a bare `pytest --cov` to 93% (real: 89%).
+source = ["src", "eval"]
 # The CLI runner is exercised by the CI retrieval gate; its grading logic lives in eval/metrics.py and is unit-tested.
 omit = ["eval/run_eval.py"]
