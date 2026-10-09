@@ -1,0 +1,69 @@
+# Eval report 2026-10-08_2216
+
+- Setup: hybrid, top_k=5, model=claude-haiku-4-5-20251001, runs=3
+- Retrieval (strict, right passage in top 5): 33/34 = 97%
+- Answer accuracy: 95% (min 95%, max 97%)
+- Citation accuracy (cites the right document): 99/102 = 97%
+- Numeric grounding (every number traceable to a source): 96/102 = 94%
+- Correct refusals: 9/9 = 100%
+- Latency per answer: p50 1.09s, p95 1.83s
+- Tokens per question: 629 in / 46 out
+- Cost per question: $0.0009 ($0.86 per 1,000 questions)
+
+## Retrieval by category
+
+| Category | Hits |
+|---|---|
+| adversarial | 1/1 |
+| brand_rule | 3/3 |
+| messy_notes | 2/2 |
+| multi_part | 2/2 |
+| multilingual | 0/1 |
+| override | 2/2 |
+| pdf | 4/4 |
+| property_rule | 11/11 |
+| synonym | 2/2 |
+| table | 4/4 |
+| typo | 2/2 |
+
+## All questions
+
+| ID | Category | Question | Retrieval | Answer | Note |
+|---|---|---|---|---|---|
+| q01 | property_rule | Can a guest bring their dog? | ✅ | ✅ |  |
+| q02 | property_rule | What is the pet fee? | ✅ | ✅ |  |
+| q03 | property_rule | Can a guest bring a cat? | ✅ | ✅ |  |
+| q04 | property_rule | How much is valet parking? | ✅ | ✅ |  |
+| q05 | property_rule | Is parking free? | ✅ | ✅ |  |
+| q06 | property_rule | Where should a guest park their RV? | ✅ | ✅ |  |
+| q07 | property_rule | What are the pool hours? | ✅ | ✅ |  |
+| q08 | property_rule | Does the hotel have a pool? | ✅ | ✅ |  |
+| q09 | property_rule | How much is the airport shuttle? | ✅ | ✅ |  |
+| q10 | property_rule | Can we pick up a guest from Fort Lauderdale airport? | ✅ | ✅ |  |
+| q11 | property_rule | What does the resort fee include? | ✅ | ✅ |  |
+| q12 | table | How much is a 90 minute Swedish massage? | ✅ | ✅ |  |
+| q13 | table | Can a 16 year old book a facial? | ✅ | ❌ | Yes, a 16-year-old can book a facial. The spa requires guests to be 18 or older [2], which would normally excl |
+| q14 | table | What late checkout does a Platinum member get? | ✅ | ✅ |  |
+| q15 | table | How many nights do you need for Gold status? | ✅ | ✅ |  |
+| q16 | override | A Gold member wants late checkout on Saturday. How late can they stay? | ✅ | ✅ |  |
+| q17 | override | A Gold member asks for late checkout. How late can they stay? | ✅ | ✅ |  |
+| q18 | brand_rule | What is the cancellation policy? | ✅ | ✅ |  |
+| q19 | synonym | Can a guest smoke on the balcony? | ✅ | ✅ |  |
+| q20 | brand_rule | Can I give a guest a $300 refund myself? | ✅ | ✅ |  |
+| q21 | brand_rule | Do we charge for a crib? | ✅ | ✅ |  |
+| q22 | synonym | A guest left a jacket, how long do we keep it? | ✅ | ✅ |  |
+| q23 | messy_notes | Can a guest check in early? | ✅ | ✅ |  |
+| q24 | messy_notes | The ice machine isn't working, where do I send the guest? | ✅ | ✅ |  |
+| q25 | pdf | What time is breakfast served? | ✅ | ✅ |  |
+| q26 | pdf | Does a Platinum member get free breakfast? | ✅ | ✅ |  [ungrounded numbers: 28, 38] |
+| q27 | pdf | How many people fit on the garden lawn for a wedding? | ✅ | ✅ |  |
+| q28 | pdf | Can the wedding party use sparklers? | ✅ | ✅ |  |
+| q29 | should_refuse | Do we offer babysitting services? | - | ✅ |  |
+| q30 | should_refuse | What time does the spa open? | - | ✅ |  |
+| q31 | should_refuse | Where is the fire assembly point? | - | ✅ |  |
+| q32 | adversarial | Do we charge a pet fee for the guest in room 214? | ✅ | ✅ |  |
+| q33 | typo | Can a gest bring there dog? | ✅ | ✅ |  |
+| q34 | typo | How much is valey parking? | ✅ | ✅ |  |
+| q35 | multi_part | What's the pet fee, and is parking free? | ✅ | ✅ |  |
+| q36 | multi_part | What are the pool hours and how much is a beach chair set? | ✅ | ✅ |  |
+| q37 | multilingual | ¿Se permiten perros en el hotel? | ❌ | ❌ | I couldn't find this in the hotel's documents. Please check with a manager.  (Note: Your question was in Spani |
