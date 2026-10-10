@@ -6,13 +6,17 @@ the file is lost when the app restarts, which resets the count early (documented
 """
 
 import json
+import logging
 import os
 import tempfile
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
+from src.fileio import with_retries
+
 _LOCK = threading.Lock()
+logger = logging.getLogger("hotel_ops.limits")
 
 
 def today_utc() -> str:
@@ -25,7 +29,7 @@ class DailyCounter:
 
     def _read(self) -> dict:
         try:
-            data = json.loads(self.path.read_text(encoding="utf-8"))
+            data = json.loads(with_retries(lambda: self.path.read_text(encoding="utf-8")))
             if data.get("date") == self.today() and isinstance(data.get("count"), int):
                 return data
         except (OSError, ValueError):
@@ -37,18 +41,31 @@ class DailyCounter:
         fd, tmp = tempfile.mkstemp(dir=self.path.parent, prefix=".daily-")
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(data, f)
-        os.replace(tmp, self.path)  # atomic: a crash never leaves a half-written file
+        try:
+            with_retries(lambda: os.replace(tmp, self.path))  # atomic: never a half-written file
+        except OSError:
+            Path(tmp).unlink(missing_ok=True)
+            raise
 
     def used(self) -> int:
         with _LOCK:
             return self._read()["count"]
 
     def try_consume(self) -> bool:
-        """Count one question if today's cap allows it. Returns False once the cap is reached."""
+        """Count one question if today's cap allows it. Returns False once the cap is reached.
+
+        If the counter file can't be written even after retries, the question is allowed (the count may be
+        off by one) and the failure is recorded for the owner: a file problem must never crash the page."""
         with _LOCK:
             data = self._read()
             if data["count"] >= self.limit:
                 return False
             data["count"] += 1
-            self._write(data)
+            try:
+                self._write(data)
+            except OSError as exc:
+                from src.errors import record_error  # lazy: errors -> usage -> config, no cycle
+
+                logger.warning("daily counter not saved: %s", type(exc).__name__)
+                record_error("Daily cap", exc)
             return True

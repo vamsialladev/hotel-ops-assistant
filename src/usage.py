@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from src.config import LOG_DIR, LOG_MAX_ENTRIES
+from src.fileio import with_retries
 
 USAGE_FILE = LOG_DIR / "usage.jsonl"
 logger = logging.getLogger("hotel_ops.usage")
@@ -29,10 +30,14 @@ def estimate_cost(tokens_in: int, tokens_out: int, price_in: float | None, price
     return (tokens_in * price_in + tokens_out * price_out) / 1_000_000
 
 
-def append_jsonl(path: Path, record: dict, max_entries: int = LOG_MAX_ENTRIES) -> None:
-    """Append one record, then keep only the most recent `max_entries` lines (retention rule)."""
+def append_jsonl(path: Path, record: dict, max_entries: int = LOG_MAX_ENTRIES) -> bool:
+    """Append one record, then keep only the most recent `max_entries` lines (retention rule).
+
+    Never raises: a log that can't be written (even after retries) is reported on stdout and skipped,
+    because logging must not break the page that's being logged. Returns whether the write succeeded."""
     path = Path(path)
-    with _LOCK:
+
+    def write():
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -40,13 +45,25 @@ def append_jsonl(path: Path, record: dict, max_entries: int = LOG_MAX_ENTRIES) -
         if len(lines) > max_entries:
             path.write_text("\n".join(lines[-max_entries:]) + "\n", encoding="utf-8")
 
+    with _LOCK:
+        try:
+            with_retries(write)
+            return True
+        except OSError as exc:
+            logger.warning("could not write %s: %s", path.name, type(exc).__name__)
+            return False
+
 
 def read_jsonl(path: Path) -> list[dict]:
     path = Path(path)
     if not path.exists():
         return []
+    try:
+        text = with_retries(lambda: path.read_text(encoding="utf-8"))
+    except OSError:
+        return []  # a locked file shows as empty for one refresh instead of breaking the page
     rows = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in text.splitlines():
         try:
             rows.append(json.loads(line))
         except ValueError:
