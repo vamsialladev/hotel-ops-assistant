@@ -86,7 +86,7 @@ sequenceDiagram
 | Pages | `app.py`, `views/` | Thin Streamlit pages; no logic beyond wiring |
 | CLI | `ask.py` | Quick command-line questions |
 | Evaluation | `eval/run_eval.py`, `eval/metrics.py`, `eval/questions.jsonl` | 54 questions; strict retrieval, answers, grounding, refusals, scope, escalation, latency, cost |
-| Tests | `tests/` | 205 tests, including every page rendered with `AppTest`; no API key or PyTorch needed |
+| Tests | `tests/` | 208 tests, including every page rendered with `AppTest`; no API key or PyTorch needed |
 
 ## Deployment modes
 | | Streamlit Community Cloud (live demo) | Docker (local or always-on host) |

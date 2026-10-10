@@ -50,4 +50,4 @@ take about 2 minutes at a calm pace. **Bold** lines are what you do; the rest is
 
 ---
 
-**After recording:** keep the video under 2:15, add captions and upload it. Then add its link where the README and the case study page have a commented-out video link (search for `VIDEO:`).
+**Recorded version:** `python scripts/record_demo.py` records this walkthrough from the live app with real answers and burned-in captions (no voice), adds a title and end card, and writes `docs/video/demo.mp4` (git-ignored) and `docs/images/demo.gif`. The published copy is https://vamsialladev.github.io/videos/hotel-ops-demo.mp4, embedded on the case study page. To narrate it yourself, read the lines above over that recording or record your own screen.

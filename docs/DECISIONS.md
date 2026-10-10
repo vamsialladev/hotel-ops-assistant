@@ -260,3 +260,13 @@ The precedence (`secrets.toml` > environment > `.env` > defaults) is Streamlit's
 **Context:** The private log and Admin error list showed short codes such as `auth` or `api_404`. A missing model ID, the easiest mistake to make in `LLM_MODEL`, appeared as a bare HTTP code.
 **Decision:** `NotFoundError` is classified as `model_not_found`. Every code maps to a plain category: authentication, credit balance, model not found, rate limit, network, Anthropic API error or unexpected. The category is stored with each error, written to the stdout log line (Manage app → Logs) and shown as "Likely cause" on the Admin page. Messages are still masked for anything that looks like a key.
 **Result:** Covered by unit tests with fake values. The configured `claude-haiku-5-5` was confirmed with the Models API (display name "Claude Haiku 5.5"), and it's the model the final 1.3.0 evals used (`eval/reports/2026-10-09_2143_hybrid_answers_claude-haiku-5-5.md` and `..._2146_bm25_...`).
+
+## 42. The demo video is recorded by a script from the live app and hosted on the portfolio site
+**Context:** The README and case study had a hidden video link waiting for a hand-recorded screen capture. A hand recording is hard to redo after every UI change and can't be checked like code. YouTube was ruled out, so the video needed another host.
+**Decision:** `scripts/record_demo.py` drives the live app with Playwright at 1280×720, following `docs/DEMO_SCRIPT.md`.
+- **Real use only:** it asks 5 real questions with natural typing and waits for each streamed answer to finish. It never opens the Admin page.
+- **Captions:** the app is recorded at 1280×640 and the captions go in an 80 px band underneath. The first draft overlaid captions on the app and covered the line under the chat input.
+- **Build:** ffmpeg adds a 3-second title card and an end card with the links, and builds the GIF and a smaller web copy with faststart. `--rebuild` re-renders without asking new questions.
+- **Hosting:** the MP4 lives in the portfolio repo (`videos/hotel-ops-demo.mp4`, served by GitHub Pages) and is embedded with an HTML5 `<video>`: controls, poster, `playsinline`, `preload="metadata"`, no autoplay. It isn't committed to this repo (`docs/video/` is git-ignored).
+**Tradeoff:** The video has no voice; the captions carry it. A narrated version means reading `DEMO_SCRIPT.md` over it. GitHub Pages isn't a streaming service, so a much longer or larger video would need a real host.
+**Result:** 1:53 long and 3.2 MB on the web (5.2 MB master), with a 10-second GIF of 1.6 MB. The first take lost the chat's auto-scroll after the Sources step, so the refusal never appeared on screen. The recorder now scrolls each finished answer into view, and the frames were checked step by step.

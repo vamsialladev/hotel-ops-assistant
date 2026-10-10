@@ -9,10 +9,9 @@
 
 > **Project 1 of 5** in my Forward Deployed Engineer portfolio. This is a *simulated client engagement*: a fictional hotel group with two properties, a beach resort and a mountain lodge. All documents are synthetic and written to mirror real hotel operations. Business value is a projection from stated assumptions, not a measured result.
 
-🔗 **[Live demo](https://hotel-ops-assistant.streamlit.app)** (open to everyone, no sign-in) · 📄 **[Case study](https://vamsialladev.github.io/projects/hotel-ops-assistant.html)** · 💰 **[Business case](docs/BUSINESS_CASE.md)** · 🏗️ **[Architecture](docs/ARCHITECTURE.md)**
-<!-- VIDEO: after recording, add this to the links line above: · 🎥 **[2-minute video](VIDEO-URL)** -->
+🔗 **[Live demo](https://hotel-ops-assistant.streamlit.app)** (open to everyone, no sign-in) · 📄 **[Case study](https://vamsialladev.github.io/projects/hotel-ops-assistant.html)** · 💰 **[Business case](docs/BUSINESS_CASE.md)** · 🏗️ **[Architecture](docs/ARCHITECTURE.md)** · 🎥 **[2-minute demo video](https://vamsialladev.github.io/videos/hotel-ops-demo.mp4)**
 
-<p align="center"><img src="docs/images/demo.gif" alt="A front-desk agent asks what time breakfast is served and the cited answer streams in, with its source chip" width="720"></p>
+<p align="center"><img src="docs/images/demo.gif" alt="A front-desk agent asks whether a guest can bring their dog at Beach Resort, and the answer streams in with its source chip and a caption" width="720"></p>
 
 ---
 
@@ -237,7 +236,7 @@ Every finding is in [DECISIONS.md](docs/DECISIONS.md) with its context, decision
 | Measuring quality, not guessing | [Eval harness](eval/), [Results](#results), raw answers saved per run |
 | Debugging with evidence | [DECISIONS.md](docs/DECISIONS.md) 13–39: grader bugs, the $75 root cause, the Streamlit startup hang, an uninstallable pin, a Windows file race reproduced with two processes |
 | Shipping a product people can use | Multi-page app, streaming, light/dark, phone layout, white-label branding |
-| Production engineering habits | 205 tests, CI with audit and coverage gates, Docker, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
+| Production engineering habits | 208 tests, CI with audit and coverage gates, Docker, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
 | Translating tech into business value | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md), the Insights page for managers |
 
 ## Project structure
@@ -263,7 +262,7 @@ hotel-ops-assistant/
 ├── data/raw/               # Hotel documents, one folder per property + shared/
 ├── eval/                   # Labeled questions, metrics, runner, saved reports
 ├── tests/                  # Unit tests
-├── scripts/                # Business case, secrets.toml builder, demo PDFs, screenshots, terminal images
+├── scripts/                # Business case, secrets.toml builder, demo video recorder, demo PDFs, screenshots
 ├── docs/                   # Architecture, decisions, business case, demo script, log, images
 ├── .streamlit/             # config.toml (theme, toolbar, file watcher) · secrets.toml.example
 ├── .github/                # CI, Dependabot, PR template
@@ -367,6 +366,7 @@ un_app.ps1` | |
 | Dependency audit | `pip-audit -r requirements.txt` | `make audit` |
 | Business case scenarios | `python scripts/business_case.py --scenarios` | |
 | README screenshots and GIF (app running) | `python scripts/capture_screenshots.py` | |
+| Re-record the demo (live app, 5 real questions; needs ffmpeg) | `python scripts/record_demo.py` → `docs/video/demo.mp4` + `docs/images/demo.gif` (`--rebuild` reuses the last recording, `--web-out PATH` adds a web copy and poster) | |
 | Design-review screenshots, light/dark/phone | `python scripts/capture_review.py --phone` | |
 | Render command output as a terminal image | `python scripts/render_terminal.py out.txt image.png --command "..." --title "..."` | |
 | Regenerate demo PDFs | `python scripts/make_demo_pdfs.py` | `make pdfs` |
@@ -446,7 +446,7 @@ Streamlit Cloud keeps logs, the error list and the daily counter only until the 
 ## Testing and quality
 
 ```bash
-python -m pytest -q --cov=src --cov=eval   # 205 unit tests, 96.5% coverage
+python -m pytest -q --cov=src --cov=eval   # 208 unit tests, 96.5% coverage
 python -m eval.run_eval                    # retrieval, scope and escalation eval (free)
 python -m eval.run_eval --answers --runs 3 --price-in 0.10 --price-out 0.50
 ruff check . && ruff format --check .      # lint and format
@@ -454,9 +454,9 @@ pip-audit -r requirements.txt              # known vulnerabilities
 ```
 
 <details>
-<summary>Test run: 205 passed, 96.5% coverage</summary>
+<summary>Test run: 208 passed, 96.5% coverage</summary>
 <br>
-<img src="docs/images/tests.png" alt="pytest output: 205 tests passed with 96.51% coverage" width="700">
+<img src="docs/images/tests.png" alt="pytest output: 208 tests passed with 96.51% coverage" width="700">
 </details>
 
 CI runs on the light install (no PyTorch): lint, format check, `pip-audit`, tests with a 70% minimum coverage, and a keyword-only retrieval regression gate (fails below 85%). Dependabot opens weekly update pull requests. Before release, a scripted Playwright QA pass clicked through every public page in light and dark mode at laptop and phone width (251 checks: links, text, limits, errors, admin lockout, console errors).
@@ -481,7 +481,7 @@ Only synthetic policy documents are indexed; no guest or payment data. Each ques
 |---|---|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System and request-flow diagrams, components, scaling path |
 | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md) | Value model, assumptions, policy gaps, pilot plan, KPIs, risks |
-| [DECISIONS.md](docs/DECISIONS.md) | 41 decisions with context, decision, tradeoff and result |
+| [DECISIONS.md](docs/DECISIONS.md) | 42 decisions with context, decision, tradeoff and result |
 | [ENGINEERING_LOG.md](docs/ENGINEERING_LOG.md) | What broke and how it was fixed, in my own words |
 | [DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Word-for-word 2-minute walkthrough |
 | [VALIDATION_CHECKLIST.md](docs/VALIDATION_CHECKLIST.md) | Steps that need a person: measured baseline, held-out questions |

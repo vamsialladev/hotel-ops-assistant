@@ -39,8 +39,8 @@ Use the manual test checklist from the release summary on a laptop and a phone, 
 - [x] Live demo at https://hotel-ops-assistant.streamlit.app, linked from the README, case study and profile.
 - [ ] Ask 3 questions on the live demo and confirm the How it works page says "keyword-only".
 - [ ] Set a monthly spending limit in the Anthropic Console.
-- [ ] Record the 2-minute video ([DEMO_SCRIPT.md](DEMO_SCRIPT.md)) and add its link where the README and case study
-      have a commented-out video link (search for `VIDEO:`).
+- [x] Record the demo video (`python scripts/record_demo.py`, captioned, from the live app) and publish it on the
+      portfolio site: https://vamsialladev.github.io/videos/hotel-ops-demo.mp4
 
 ## Done when
 - [ ] Business case cites a measured baseline

@@ -2,6 +2,23 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.3.3] - 2026-10-10
+### Added
+- Captioned 2-minute demo video, recorded from the live app with real answers by `python scripts/record_demo.py`
+  (Playwright + ffmpeg): title card, burned-in captions, end card with links. Published on the portfolio site
+  (https://vamsialladev.github.io/videos/hotel-ops-demo.mp4), embedded on the case study page and linked from the README.
+- README command "Re-record the demo"; unit tests for the recorder's caption timing and cards (208 tests).
+
+### Changed
+- `docs/images/demo.gif` re-made from the live app (the dog question at Beach Resort, 10 s).
+- `docs/video/` (the video master and raw recording) is git-ignored.
+
+### Verified on the live app
+- Answers with sources at both hotels, a "Check with a manager" answer, the fire assembly point refusal, an
+  off-topic question refused before the API, and a wrong fee corrected.
+- New conversation (disabled → enabled → toast → disabled), 👍 and 👎 with a reason appearing on Insights,
+  footer links, the Document library link, and the Admin sign-in form.
+
 ## [1.3.2] - 2026-10-10
 ### Added
 - `python scripts/make_secrets.py` (`make secrets`) builds `.streamlit/secrets.toml` from `.env`: every
