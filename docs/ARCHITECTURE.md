@@ -76,13 +76,16 @@ sequenceDiagram
 | Limits | `src/limits.py` | Daily cap across all visitors (atomic file counter) |
 | Usage and feedback | `src/usage.py`, `src/feedback.py` | JSON Lines logs with retention; stdout logging without question text |
 | Errors | `src/errors.py` | Map API errors to one friendly message; private detail with secrets masked |
-| Admin gate | `src/admin.py` | Constant-time password check, failure delay, lockout |
+| Admin gate | `src/admin.py` | Constant-time password check, failure delay, lockout, sign out, idle auto-lock |
+| Monitoring | `src/monitoring.py` | Health, threshold warnings, activity table, filters, CSV export for the Admin page |
+| Safe file writes | `src/fileio.py` | Retries Windows file-sharing collisions so logs and the counter never crash a page |
+| Error boundary | `views/components.py` | Wraps every page and callback: friendly message, error recorded, no crash screen |
 | Display | `src/display.py` | HTML and `$` escaping, source chips, badges, tables, bar lists |
 | Library, activity, reports | `src/library.py`, `src/activity.py`, `src/reports.py` | Document inventory; Insights and Admin aggregates; parsing saved eval reports and the business case |
 | Pages | `app.py`, `views/` | Thin Streamlit pages; no logic beyond wiring |
 | CLI | `ask.py` | Quick command-line questions |
 | Evaluation | `eval/run_eval.py`, `eval/metrics.py`, `eval/questions.jsonl` | 54 questions; strict retrieval, answers, grounding, refusals, scope, escalation, latency, cost |
-| Tests | `tests/` | 148 unit tests, no API key or PyTorch needed |
+| Tests | `tests/` | 181 tests, including every page rendered with `AppTest`; no API key or PyTorch needed |
 
 ## Deployment modes
 | | Streamlit Community Cloud (live demo) | Docker (local or always-on host) |
@@ -94,7 +97,7 @@ sequenceDiagram
 | Logs | Reset when the app restarts | Persist for the container's life (mount a volume to keep them) |
 
 ## Key design choices
-See [DECISIONS.md](DECISIONS.md) for all 33. In short:
+See [DECISIONS.md](DECISIONS.md) for all 38. In short:
 - **Hybrid search**, because staff use exact terms (prices, airport codes) and loose phrasing; keyword-only where memory is tight.
 - **Property filter before search**, because a correct answer from the wrong hotel is still wrong.
 - **Refuse rather than guess, and refuse off-topic questions for free.**

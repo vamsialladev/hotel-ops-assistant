@@ -2,6 +2,28 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - 2026-10-10
+### Added
+- **Owner monitoring on the Admin page:** health and recent errors, warnings when the error rate or estimated
+  cost crosses a threshold (`ALERT_ERROR_RATE`, `ALERT_MIN_EVENTS`, `ALERT_DAILY_COST_USD`), questions today vs
+  the daily cap, a filterable activity table with 👍 / 👎, CSV downloads of the usage, feedback and error logs,
+  sign out, and automatic sign-out after 30 minutes idle (`ADMIN_IDLE_MINUTES`).
+- **Error list:** every caught error is recorded in `data/errors.jsonl` (git-ignored, bounded) as well as stdout.
+- **Error boundary** on every page and button callback: a friendly message instead of Streamlit's crash screen.
+- One-click Windows launcher: `run_app.bat` / `run_app.ps1`.
+- README: Monitoring section, live demo link, auto-redeploy note, and a note on AI-assisted development.
+- Tests: every page rendered with `AppTest`, with and without an injected exception; button state; file
+  races; monitoring; sign out and auto-lock (181 tests, 96% coverage).
+
+### Changed
+- "New conversation" is disabled with a tooltip when the conversation is empty, and shows a toast when it clears.
+- Usage and feedback records carry a `turn_id`, so ratings line up with their answers.
+- Codespaces dev container uses Python 3.12.
+
+### Fixed
+- Crash on the Assistant page when two app instances share `data/` on Windows (file-sharing `PermissionError`
+  on the daily counter and logs), reproduced with a two-process test and fixed with retries and safe fallbacks.
+
 ## [1.3.0] - 2026-10-09
 First release run for real: on Windows, with the Streamlit app, hybrid search and real Claude answers (the
 earlier versions were built in a sandbox that couldn't run them). Every number below is measured.

@@ -36,12 +36,13 @@ The same person wrote the documents and the eval questions, which flatters the s
 Use the manual test checklist from the release summary on a laptop and a phone, in light and dark mode.
 
 ## 4. After deploying
-- [ ] Live demo URL in the README and case study (replace `YOUR-STREAMLIT-APP`).
+- [x] Live demo at https://hotel-ops-assistant.streamlit.app, linked from the README, case study and profile.
 - [ ] Ask 3 questions on the live demo and confirm the How it works page says "keyword-only".
 - [ ] Set a monthly spending limit in the Anthropic Console.
-- [ ] Record the 2-minute video ([DEMO_SCRIPT.md](DEMO_SCRIPT.md)) and replace `YOUR-VIDEO-LINK`.
+- [ ] Record the 2-minute video ([DEMO_SCRIPT.md](DEMO_SCRIPT.md)) and add its link where the README and case study
+      have a commented-out video link (search for `VIDEO:`).
 
 ## Done when
 - [ ] Business case cites a measured baseline
 - [ ] Held-out score reported
-- [ ] Live demo and video links filled in
+- [ ] Video link filled in

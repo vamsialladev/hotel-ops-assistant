@@ -9,7 +9,8 @@
 
 > **Project 1 of 5** in my Forward Deployed Engineer portfolio. This is a *simulated client engagement*: a fictional hotel group with two properties, a beach resort and a mountain lodge. All documents are synthetic and written to mirror real hotel operations. Business value is a projection from stated assumptions, not a measured result.
 
-🔗 **[Live demo](https://YOUR-STREAMLIT-APP.streamlit.app)** · 🎥 **[2-minute video](https://YOUR-VIDEO-LINK)** · 📄 **[Case study](https://vamsialladev.github.io/projects/hotel-ops-assistant.html)** · 💰 **[Business case](docs/BUSINESS_CASE.md)** · 🏗️ **[Architecture](docs/ARCHITECTURE.md)**
+🔗 **[Live demo](https://hotel-ops-assistant.streamlit.app)** (open to everyone, no sign-in) · 📄 **[Case study](https://vamsialladev.github.io/projects/hotel-ops-assistant.html)** · 💰 **[Business case](docs/BUSINESS_CASE.md)** · 🏗️ **[Architecture](docs/ARCHITECTURE.md)**
+<!-- VIDEO: after recording, add this to the links line above: · 🎥 **[2-minute video](VIDEO-URL)** -->
 
 <p align="center"><img src="docs/images/demo.gif" alt="A front-desk agent asks what time breakfast is served and the cited answer streams in, with its source chip" width="720"></p>
 
@@ -22,7 +23,7 @@
 | **Problem** | Staff search scattered PDFs, menus and notes while a guest waits, and the rules differ by hotel. Wrong answers turn into refunds and complaints. |
 | **Solution** | Pick your property, ask in plain English, and get a 1–4 sentence answer that cites every fact. It refuses when the documents don't say, corrects wrong facts in the question, and points to a manager for refunds and safety. |
 | **Projected value** | ~$32K/yr net for 2 properties (range $8.5K–$66K); ~$1.6M/yr at 100-property scale ([assumptions](docs/BUSINESS_CASE.md)) |
-| **Quality (measured)** | 54-question eval, 3 runs: **98% answer accuracy** with hybrid search, **96%** on the live demo's keyword-only search; 100% of escalation rules correct; full answer p95 **2.4–2.7s**; **$0.17–0.19 per 1,000 questions**. 148 unit tests, 96% coverage. |
+| **Quality (measured)** | 54-question eval, 3 runs: **98% answer accuracy** with hybrid search, **96%** on the live demo's keyword-only search; 100% of escalation rules correct; full answer p95 **2.4–2.7s**; **$0.17–0.19 per 1,000 questions**. 181 unit tests, 96% coverage. |
 
 ## Where to start
 
@@ -65,7 +66,7 @@ Staff have to find the right document for the right hotel while the guest waits.
 
 **For recruiters and engineers:** **How it works** reads the latest real eval report (never hard-coded numbers), shows which retrieval mode the running app uses and its measured accuracy, the architecture, the Haiku 4.5 vs 5.5 comparison, and the safety measures.
 
-**For the owner only:** a password-protected **Admin** page (hidden from visitors) with questions today, daily cap use, tokens, estimated cost, latency, refusals, grounding flags and recent retrievals.
+**For the owner only:** a password-protected **Admin** page (hidden from visitors): health and recent errors, warnings when the error rate or cost crosses a threshold, questions today against the daily cap, a filterable activity table with 👍 / 👎, CSV downloads of the logs, sign out and a 30-minute auto-lock. See [Monitoring](#monitoring).
 
 <details>
 <summary>More screenshots: document library, how it works, dark mode, phone</summary>
@@ -234,16 +235,17 @@ Every finding is in [DECISIONS.md](docs/DECISIONS.md) with its context, decision
 | Working with messy, real-world data | [Messy data handling](#how-it-handles-messy-real-world-data), `src/ingest.py`, Document library |
 | Building reliable AI retrieval | Property-filtered hybrid search, scope check, refusals, grounding check |
 | Measuring quality, not guessing | [Eval harness](eval/), [Results](#results), raw answers saved per run |
-| Debugging with evidence | [DECISIONS.md](docs/DECISIONS.md) 13–33: grader bugs, the $75 root cause, the Streamlit startup hang, an uninstallable pin |
+| Debugging with evidence | [DECISIONS.md](docs/DECISIONS.md) 13–38: grader bugs, the $75 root cause, the Streamlit startup hang, an uninstallable pin, a Windows file race reproduced with two processes |
 | Shipping a product people can use | Multi-page app, streaming, light/dark, phone layout, white-label branding |
-| Production engineering habits | 148 tests, CI with audit and coverage gates, Docker, logging, cost caps, [SECURITY.md](SECURITY.md) |
+| Production engineering habits | 181 tests, CI with audit and coverage gates, Docker, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
 | Translating tech into business value | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md), the Insights page for managers |
 
 ## Project structure
 
 ```
 hotel-ops-assistant/
-├── app.py                  # Streamlit entry point: navigation, theme, admin gating
+├── app.py                  # Streamlit entry point: navigation, theme, admin gating, error boundary
+├── run_app.ps1 · run_app.bat  # One-click local run on Windows
 ├── views/                  # Thin pages: assistant, insights, library, how it works, privacy, admin
 ├── src/                    # All logic, unit-tested
 │   ├── config.py           # Settings (env-overridable)
@@ -252,7 +254,8 @@ hotel-ops-assistant/
 │   ├── generate.py         # Prompt, streaming Claude call, citations, refusal detection
 │   ├── service.py          # One question end to end (scope, checks, usage record)
 │   ├── scope.py · escalation.py · grounding.py · gaps.py
-│   ├── chat.py · limits.py · usage.py · feedback.py · errors.py · admin.py
+│   ├── chat.py · limits.py · usage.py · feedback.py · errors.py · admin.py · fileio.py
+│   ├── monitoring.py       # Health, warnings, activity table and CSV export for the Admin page
 │   └── display.py · branding.py · library.py · activity.py · reports.py
 ├── branding.toml           # White-label: product name, colors, properties, sample questions
 ├── assets/                 # Logo and favicon
@@ -263,6 +266,7 @@ hotel-ops-assistant/
 ├── docs/                   # Architecture, decisions, business case, demo script, log, images
 ├── .streamlit/config.toml  # Theme (light + dark), toolbar, file watcher
 ├── .github/                # CI, Dependabot, PR template
+├── .devcontainer/          # GitHub Codespaces setup (Python 3.12)
 ├── Dockerfile · Makefile · pyproject.toml · requirements*.txt
 └── SECURITY.md · CONTRIBUTING.md · CHANGELOG.md · LICENSE · .env.example
 ```
@@ -271,7 +275,9 @@ hotel-ops-assistant/
 
 **Requirements:** Python 3.12 and an [Anthropic API key](https://console.anthropic.com).
 
-**Windows (PowerShell)**
+**One click on Windows (after the first setup below):** double-click `run_app.bat`, or run `.un_app.ps1`. It uses the `.venv`, checks that `.env` exists, builds the index if it's missing, and opens the app at http://localhost:8501.
+
+**Windows (PowerShell), first setup**
 ```powershell
 git clone https://github.com/vamsialladev/hotel-ops-assistant.git
 cd hotel-ops-assistant
@@ -322,7 +328,11 @@ All settings live in `.env` (copy it from `.env.example`). On Streamlit Cloud, a
 | `LOG_MAX_ENTRIES` | `5000` | Usage and feedback logs keep only the newest entries |
 | `PRICE_IN_PER_M` / `PRICE_OUT_PER_M` | unset | USD per million tokens, for cost estimates on the Admin page (Haiku 5.5: `0.10` / `0.50`) |
 | `ADMIN_PASSWORD` | unset | Enables the owner-only Admin page; unset = no Admin page at all |
-| `LOG_DIR` | `data/` | Where logs and the daily counter are written |
+| `LOG_DIR` | `data/` | Where logs, the error list and the daily counter are written |
+| `ALERT_ERROR_RATE` | `0.2` | Admin warning when errors today ÷ (questions + errors) reaches this |
+| `ALERT_MIN_EVENTS` | `5` | No error-rate warning until today has at least this many questions and errors |
+| `ALERT_DAILY_COST_USD` | `1.00` | Admin warning when today's estimated cost reaches this |
+| `ADMIN_IDLE_MINUTES` | `30` | The Admin page signs out after this long without activity |
 
 **Rebrand for a client demo (about 5 minutes):** edit `branding.toml` (product name, hotel group, colors, logo, property names, highlights and sample questions), set the same primary colors in `.streamlit/config.toml` under `[theme.light]` and `[theme.dark]`, and replace `assets/logo.svg`, `assets/logo-icon.svg` and `assets/favicon.png`. The "Demo with simulated hotel documents" label is fixed and can't be removed by branding.
 
@@ -334,6 +344,7 @@ All settings live in `.env` (copy it from `.env.example`). On Streamlit Cloud, a
 | Install light core only (keyword search) | `pip install -r requirements.txt` | |
 | Build the search index | `python -m src.ingest` | `make index` |
 | Build index without embeddings | `python -m src.ingest --bm25-only` | |
+| Run the app with one click (Windows) | double-click `run_app.bat`, or `.un_app.ps1` | |
 | Run the web app | `streamlit run app.py` | `make app` |
 | Ask from the command line | `python ask.py beach-resort "Can a guest bring a dog?"` | `make demo` |
 | Unit tests with coverage | `python -m pytest -q --cov=src --cov=eval` | `make test` |
@@ -362,7 +373,8 @@ All settings live in `.env` (copy it from `.env.example`). On Streamlit Cloud, a
 | PyTorch fails to install | Use Python 3.12, or run keyword-only with `requirements.txt` |
 | Answer uses an old policy | Mark the old file `status: superseded` and rebuild the index |
 | A new document isn't found | Rebuild the index after adding or editing documents |
-| No Admin page | Set `ADMIN_PASSWORD`, then open `/admin` |
+| No Admin page | Set `ADMIN_PASSWORD`, then open `/admin` (live: https://hotel-ops-assistant.streamlit.app/admin) |
+| `run_app.ps1` says there's no `.venv` or `.env` | Do the first setup above once; the message shows the exact commands |
 
 ## Deploy
 
@@ -381,6 +393,8 @@ All settings live in `.env` (copy it from `.env.example`). On Streamlit Cloud, a
    ```
 4. Click **Deploy**. The first start builds the search index automatically.
 
+The live demo runs at **https://hotel-ops-assistant.streamlit.app**, open to everyone as a guest (no sign-in). **Every push to `main` redeploys it automatically** on Streamlit Cloud and runs CI on GitHub, so there's no manual deployment step.
+
 Streamlit Cloud installs only `requirements.txt`, so the live demo runs **keyword-only search**: measured 96% strict retrieval and 96% answer accuracy (hybrid: 98% / 98%). Hybrid needs PyTorch, which measured at about 606 MB of RAM against Streamlit Cloud's 690 MB guaranteed minimum ([decision 28](docs/DECISIONS.md)). The How it works page states the running mode.
 
 **Before sharing the link, set a monthly spending limit in the [Anthropic Console](https://console.anthropic.com).** Every visitor's question uses your credit; the session and daily caps limit it, but the Console limit is the real backstop.
@@ -393,10 +407,22 @@ Notes: Streamlit Cloud apps sleep after 12 hours without traffic, and the usage 
 3. Add the environment variables above (`USE_EMBEDDINGS` can stay `true`). Render sets `PORT`, and the container listens on it.
 4. Deploy. The image builds the index and downloads the embedding model at build time, so it starts quickly and stays on 24/7.
 
+## Monitoring
+
+Three places to check, from most to least specific:
+
+| Where | What it shows | How to open it |
+|---|---|---|
+| **Admin page** (this app) | Health (status, model, retrieval mode, uptime), questions today vs the daily cap, estimated cost today, the most recent errors, warnings when the error rate or cost crosses a threshold, a filterable activity table with 👍 / 👎, and CSV downloads of the usage, feedback and error logs | https://hotel-ops-assistant.streamlit.app/admin with your `ADMIN_PASSWORD` |
+| **Streamlit's "Manage app" logs** | Server output: one line per question (no question text), errors with tracebacks, startup messages | Bottom-right of the live app → **Manage app**, or [share.streamlit.io](https://share.streamlit.io) |
+| **Anthropic Console usage page** | The real API usage and bill (the Admin page only estimates cost) | [console.anthropic.com](https://console.anthropic.com) → Usage |
+
+Streamlit Cloud keeps logs, the error list and the daily counter only until the app restarts, so the Admin page shows recent activity. Persistent monitoring and alerts (e.g. Sentry) and real sign-in with roles and a guest mode are planned for **Project 4**.
+
 ## Testing and quality
 
 ```bash
-python -m pytest -q --cov=src --cov=eval   # 148 unit tests, 96% coverage
+python -m pytest -q --cov=src --cov=eval   # 181 unit tests, 96% coverage
 python -m eval.run_eval                    # retrieval, scope and escalation eval (free)
 python -m eval.run_eval --answers --runs 3 --price-in 0.10 --price-out 0.50
 ruff check . && ruff format --check .      # lint and format
@@ -404,9 +430,9 @@ pip-audit -r requirements.txt              # known vulnerabilities
 ```
 
 <details>
-<summary>Test run: 148 passed, 96% coverage</summary>
+<summary>Test run: 181 passed, 96% coverage</summary>
 <br>
-<img src="docs/images/tests.png" alt="pytest output: 148 tests passed with 95.57% coverage" width="700">
+<img src="docs/images/tests.png" alt="pytest output: 181 tests passed with 96.36% coverage" width="700">
 </details>
 
 CI runs on the light install (no PyTorch): lint, format check, `pip-audit`, tests with a 70% minimum coverage, and a keyword-only retrieval regression gate (fails below 85%). Dependabot opens weekly update pull requests. Before release, a scripted Playwright QA pass clicked through every public page in light and dark mode at laptop and phone width (251 checks: links, text, limits, errors, admin lockout, console errors).
@@ -431,13 +457,17 @@ Only synthetic policy documents are indexed; no guest or payment data. Each ques
 |---|---|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System and request-flow diagrams, components, scaling path |
 | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md) | Value model, assumptions, policy gaps, pilot plan, KPIs, risks |
-| [DECISIONS.md](docs/DECISIONS.md) | 33 decisions with context, decision, tradeoff and result |
+| [DECISIONS.md](docs/DECISIONS.md) | 38 decisions with context, decision, tradeoff and result |
 | [ENGINEERING_LOG.md](docs/ENGINEERING_LOG.md) | What broke and how it was fixed, in my own words |
 | [DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Word-for-word 2-minute walkthrough |
 | [VALIDATION_CHECKLIST.md](docs/VALIDATION_CHECKLIST.md) | Steps that need a person: measured baseline, held-out questions |
 | [SECURITY.md](SECURITY.md) | Data handling, threat model, OWASP LLM Top 10 mapping |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow, commit style, how to add documents, properties and eval questions |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
+
+## How this was built
+
+Built with AI-assisted development (Claude Code). I defined the requirements and standards, made the product and design decisions, reviewed the changes, and tested the app myself, including finding several bugs through manual testing.
 
 ## Author
 

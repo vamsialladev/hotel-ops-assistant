@@ -50,4 +50,4 @@ take about 2 minutes at a calm pace. **Bold** lines are what you do; the rest is
 
 ---
 
-**After recording:** keep the video under 2:15, add captions, upload it, and replace `YOUR-VIDEO-LINK` in the README and on the case study page.
+**After recording:** keep the video under 2:15, add captions and upload it. Then add its link where the README and the case study page have a commented-out video link (search for `VIDEO:`).

@@ -207,3 +207,29 @@ Read by hand: Haiku 5.5's only miss besides the Spanish question is a grader fal
 **Decision:** Standardize on Python 3.12: `requires-python = ">=3.12"`, CI, the Docker base image, the README and the Streamlit Cloud instructions.
 **Tradeoff:** Python 3.11 is no longer supported. Relaxing the pin would keep 3.11, but the tested combination is 3.12.
 **Lesson:** A pin that was never installed on the claimed version is a claim, not a fact. The Docker build caught it before CI or a reviewer did.
+
+## 34. Crash on the Assistant page: a Windows file race, reproduced and fixed
+**Context:** The app once showed Streamlit's "This app has encountered an error" screen on the Assistant page during manual testing. The saved server logs held no traceback for it, so I looked for code that could raise outside the existing `try`: the daily counter's atomic `os.replace` and the log rewrites. On Windows these fail with `PermissionError: [WinError 5] Access is denied` while another process has the file open, which happens when two app instances share `data/` (as they did while screenshots were captured during manual testing). Two processes writing at once reproduced it on about 1 in 10 writes (≈330 exceptions in 3,000 writes).
+**Decision:** A small `src/fileio.py` retries file-sharing collisions with a short, growing delay. If a write still fails, the daily counter lets the question through (the count may be off by one) and records the error; log appends report on stdout and return `False`; reads return an empty list for one refresh. Nothing in the logging path can crash a page.
+**Result:** The same two-process test now raises 0 exceptions and loses 0 log writes; 2 counter writes out of 3,000 still failed after all retries and were recorded in the error log as intended. Regression tests simulate the locked file for the counter, the log append and the log read.
+**Tradeoff:** Under heavy contention the daily count can be off by one. A database or a hosted counter would be exact (Project 4).
+
+## 35. An error boundary on every page and button
+**Context:** Even with the cause above fixed, any future bug would show Streamlit's crash screen to a visitor.
+**Decision:** `app.py` runs every page inside `ui.error_boundary(page.title)`, and every button callback is wrapped by `ui.safe_callback`. An unexpected exception shows one friendly message, goes to stdout with its traceback, and is recorded in `data/errors.jsonl` for the Admin page. Streamlit's own control-flow exceptions (`st.rerun`, `st.stop`, page switches) pass through.
+**Result:** An `AppTest` per page injects an exception and checks: no crash screen, only the friendly message, and an error record with the right page name and a masked message.
+**Tradeoff:** The boundary hides details from visitors; the owner reads them on the Admin page or in the Manage app logs.
+
+## 36. Owner monitoring without command-line logs
+**Context:** The owner needs to know, from a browser, whether the live demo is healthy, what it costs and what failed, without reading server logs.
+**Decision:** The Admin page starts with **Health and errors** (status, model, retrieval mode, uptime, questions today vs the daily cap, estimated cost today, the 20 most recent errors) and shows warnings when the error rate (default 20%, after at least 5 events) or today's estimated cost (default $1.00) crosses a threshold set in `.env` / secrets. A **Recent activity** table joins each usage entry with its 👍 / 👎 and reason through a new `turn_id`, with date, property and errors-only filters, and **CSV downloads** of the usage, feedback and error logs (with formula-injection protection). **Sign out** and an automatic sign-out after 30 minutes idle, checked once a minute even if the page is just left open.
+**Tradeoff:** Everything lives in local files that reset when Streamlit Cloud restarts the app. Persistent monitoring with alerts (e.g. Sentry) is Project 4.
+
+## 37. "New conversation" follows the standard disabled/enabled pattern
+**Context:** Clicking "New conversation" on an empty conversation looked like nothing happened.
+**Decision:** The button is disabled, with the tooltip "This conversation is already empty", until the current property has a message; clearing shows the toast "Started a new conversation". The button is drawn at the end of the page so it becomes enabled as soon as the first answer appears, not one interaction later.
+**Result:** Covered by an `AppTest` (disabled → enabled → toast → disabled) and checked on the live app.
+
+## 38. The Codespaces dev container uses Python 3.12
+**Context:** Streamlit Cloud's "Dev Container" commit used a Python 3.11 image, where `numpy~=2.5` can't install (decision 33).
+**Decision:** Switch the image to `python:1-3.12-bookworm`. Its `postAttachCommand` turns off Streamlit's CORS and XSRF protection; that only affects the Codespaces preview, not the live app, and is left as generated.

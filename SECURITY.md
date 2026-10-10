@@ -14,11 +14,13 @@ per-property access is planned for Project 4.
     error code.
   - `data/feedback.jsonl`: 👍 / 👎, the optional reason, the question and answer.
   - `data/daily_count.json`: today's question count for the daily cap.
+  - `data/errors.jsonl`: caught errors for the Admin page: time, page, error type and a short message (masked for
+    anything that looks like a key, at most 160 characters). No question text and no traceback.
 - **Logged to stdout** (Streamlit Cloud's owner-only logs): the same usage record **without the question text**.
 - **Never logged anywhere:** the API key, the admin password or any other secret.
 
 ## Log retention
-- Usage and feedback logs keep only the **most recent 5,000 entries** (`LOG_MAX_ENTRIES`); older lines are trimmed
+- Usage, feedback and error logs keep only the **most recent 5,000 entries** (`LOG_MAX_ENTRIES`); older lines are trimmed
   on every write.
 - On Streamlit Community Cloud the files are deleted whenever the app restarts or redeploys.
 - Questions are stored **as typed**. The input box and the privacy note ask visitors not to enter guest names or
@@ -40,7 +42,9 @@ per-property access is planned for Project 4.
 | Cost abuse by visitors | API bill grows | 20 questions per session, 200 per day across all visitors (server-side, survives refresh), 500-character limit, off-topic questions refused before the API, `max_tokens` cap; owner sets a spending limit in the Anthropic Console | Mitigated; the daily count resets if the cloud app restarts |
 | Prompt injection in documents or questions | Wrong or harmful instructions followed (e.g. "waive all fees") | System prompt treats sources as data; a planted injection is in the eval and checked by hand every run; answers can't take actions | Partly mitigated: prompt rules reduce, not eliminate, the risk |
 | XSS through answers, documents or questions | Script runs in a visitor's browser | All model output, document text and user input is HTML-escaped (and `$` escaped) before display; `unsafe_allow_html` only for static styling and a static diagram; unit tests with `<script>` input | Mitigated |
-| Admin brute force | Owner data exposed | `hmac.compare_digest`, 1-second delay per failure, 5-attempt lockout for 15 minutes, page hidden until unlocked and absent when no password is set | Partly mitigated: lockout is per session, not per IP; this is demo protection, not authentication |
+| Admin brute force | Owner data exposed | `hmac.compare_digest`, 1-second delay per failure, 5-attempt lockout for 15 minutes, page hidden until unlocked and absent when no password is set; sign out button and auto sign-out after 30 minutes idle | Partly mitigated: lockout is per session, not per IP; this is demo protection, not authentication |
+| Crash screens leaking internals | Tracebacks or file paths shown to visitors | Error boundary around every page and button callback shows one friendly message; errors recorded privately; `showErrorDetails = "none"`; tested on every page with an injected exception | Mitigated |
+| Spreadsheet formula injection in exported logs | A visitor's question like `=HYPERLINK(...)` runs when the owner opens the CSV | Values starting with `=`, `+`, `-`, `@` are prefixed with `'` in CSV downloads (unit-tested) | Mitigated |
 | Cross-property data leak | Staff told another hotel's rules | Search filtered to the selected property + brand-wide docs before ranking (unit-tested); cross-property eval cases (q38, q39) | Mitigated |
 | Personal data in logs | Guest details stored in logs | Input reminder, privacy note, git-ignored logs, 5,000-entry retention, masking on the public Insights page, question text kept out of stdout logs | Partly mitigated: redaction planned for Project 4 |
 | Vulnerable dependencies | Known CVEs in the app | Pinned versions, Dependabot weekly, `pip-audit` in CI fails on any known vulnerability | Mitigated |
