@@ -1,4 +1,4 @@
-.PHONY: install pdfs index app test eval eval-answers demo
+.PHONY: install pdfs index app test lint audit eval eval-answers demo screenshots
 
 install:        ## install dependencies
 	pip install -r requirements-dev.txt
@@ -12,14 +12,23 @@ index:          ## build the search index
 app:            ## run the staff web app
 	streamlit run app.py
 
-test:           ## unit tests
-	python -m pytest -q
+test:           ## unit tests with coverage
+	python -m pytest -q --cov=src --cov=eval
+
+lint:           ## lint and format check
+	ruff check . && ruff format --check .
+
+audit:          ## known vulnerabilities in dependencies
+	pip-audit -r requirements.txt
 
 eval:           ## retrieval eval (free)
 	python -m eval.run_eval
 
-eval-answers:   ## full eval incl. answers (uses API)
-	python -m eval.run_eval --answers
+eval-answers:   ## full eval incl. answers, 3 runs, with cost (uses the API)
+	python -m eval.run_eval --answers --runs 3 --price-in 0.10 --price-out 0.50
+
+screenshots:    ## README screenshots and GIF (app must be running)
+	python scripts/capture_screenshots.py
 
 demo:           ## ask the demo questions from the CLI
 	python ask.py beach-resort "A Gold member wants late checkout on Saturday. How late can they stay?"
