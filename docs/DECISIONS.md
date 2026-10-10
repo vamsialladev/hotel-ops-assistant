@@ -90,7 +90,7 @@ Short records of the important choices, written for the client's engineering tea
 **Decision:** q13 also has `"must_not_contain": ["can book"]`. All yes/no questions were reviewed by hand across every saved run of both models; q13 was the only one affected.
 **Result:** Haiku 4.5's accuracy drops from the reported 97% to 95%. The earlier 97% was inflated by the weak check.
 
-## 18. Model comparison: Claude Haiku 4.5 vs Claude Haiku 5.5 (decision pending)
+## 18. Model comparison: Claude Haiku 4.5 vs Claude Haiku 5.5 (decided: ship 5.5, see 26)
 **Context:** Decision 5 promised a measured model choice. Both models ran the same 37 questions, 3 runs each, same retrieval (hybrid, top 5), same prompt, same `max_tokens=500`. Haiku 5.5 was run as a drop-in swap via `LLM_MODEL`, with its defaults (adaptive thinking, effort `medium`). Prices passed as flags: Haiku 4.5 $1 / $5, Haiku 5.5 $0.10 / $0.50 per million input / output tokens.
 
 | Metric | Claude Haiku 4.5 (shipped) | Claude Haiku 5.5 |
@@ -109,10 +109,101 @@ Grounding misses for Haiku 4.5 besides q37: a computed "$264" total for q12 (2 r
 
 **Recommendation:** Switch to Claude Haiku 5.5. It removes the one *unsafe* wrong answer type seen (a confident "yes" against a policy), grounds numbers better, and costs about a fifth as much. The price is about 0.35s more p95 latency, which is still well under the time a guest waits at the desk.
 **If approved:** set the default in `src/config.py` and `.env.example`; give thinking headroom (`max_tokens` ~1,000) because thinking counts toward the cap; rerun the eval and update the README.
-**Status:** Waiting for the owner's decision. Haiku 4.5 remains the shipped default.
+**Status:** Approved by the owner. Haiku 5.5 ships; final numbers on the 54-question eval are in decision 26.
 
 ## 19. Turn off Streamlit's file watcher
 **Context:** The sandbox couldn't run the app. On Windows, `streamlit run app.py` passed the health check but the page sat on "Running get_retriever()…" for over 5 minutes. The same code loaded in 44s in a plain thread and in 53s under Streamlit's headless `AppTest`, so the app code was fine. The difference was the live server's file watcher, which tracks the folder of every imported module, and PyTorch and transformers import thousands.
 **Decision:** `.streamlit/config.toml` sets `fileWatcherType = "none"`. It's read locally, in Docker (`/app`) and on Streamlit Community Cloud.
 **Result:** With the plain command, the page renders in about 30–40s on first load (mostly loading the embedding model), and a test question returned a cited answer in 1.9s.
 **Tradeoff:** No auto-reload when editing code. Developers can turn it back on with `--server.fileWatcherType auto`. Production never needs it.
+
+## 20. Bug: a $75 fee at Mountain Lodge (root cause: a number in the question)
+**Context:** At Mountain Lodge, "Can a guest bring their dog?" returned "At $75 for the stay, the fee falls within the cap." $75 is the Beach Resort fee. Retrieval never sends a Beach Resort passage for Mountain Lodge, and 10 reruns of the plain question gave $50/night every time.
+**Root cause:** a user-supplied number in the question. The question actually asked was "Can a guest bring their dog? (expect 40 lbs, $75 per stay)" (pasted test notes). The model accepted the stated fee.
+**Decision:** The prompt now treats facts and numbers in a question as unverified and says to correct them from the sources. New eval cases: a wrong fee (q40, the exact input), a wrong time (q41), a wrong policy (q42), another wrong fee (q43), and cross-property leak checks (q38, q39). The numeric grounding check also runs at answer time and shows "Check before quoting" when a number isn't in the cited sources.
+**Result:** Wrong-premise questions are corrected in 12/12 answers on the final hybrid eval ("The $75 per-stay figure isn't correct: the pet fee is $50 per night per room, capped at $200 per stay").
+**Tradeoff:** The runtime check allows numbers that appear in the question (a correct answer may repeat them), so it catches invented numbers, not echoed ones; the prompt and the eval cover echoed ones.
+
+## 21. Each question is answered on its own
+**Context:** The new chat layout shows a conversation, and sending earlier turns to Claude would make follow-ups easier.
+**Decision:** Earlier turns are shown on screen but never sent. Each answer sees only the rules, the passages for this question and the question.
+**Tradeoff:** No follow-ups like "and for two nights?". In exchange every answer is grounded in the documents alone, can't drift on earlier mistakes, and costs the same as the first question.
+
+## 22. "Check with a manager" rules come from the documents, word for word
+**Context:** Refunds over the front-desk limit, non-refundable rate exceptions, repeated noise complaints and safety questions need a manager. Guessing which questions are sensitive would be arbitrary.
+**Decision:** Four rules in `src/escalation.py`, each quoting the sentence that justifies it; a unit test fails if a document changes and the quote no longer matches. Triggers are deterministic checks on the question (amount over $50, "non-refundable", noise at Mountain Lodge, emergency terms, with "fire pit" and "smoke on the balcony" excluded). Eval cases check that each rule fires when it should and stays quiet when it shouldn't.
+**Result:** 54/54 correct in both retrieval modes. Building the rules exposed a real gap in the documents: credits from $51 to $200 have no approver (listed in BUSINESS_CASE.md as an item to raise with the client).
+**Tradeoff:** Keyword triggers miss unusual phrasings; the generic note still appears for every refusal.
+
+## 23. Refuse off-topic questions before the API, in both retrieval modes
+**Context:** A public demo gets off-topic questions, and each one costs an API call.
+**Decision:** Keyword-only: no passage shares a keyword with the question means out of scope. Hybrid: no keyword match and no passage at least 0.27 similar. The threshold sits halfway between the closest off-topic question (0.23, a poem request) and the least similar answerable one (0.31, the Spanish question); the "jacket" question is 0.47. Single-letter tokens are now ignored, because the "s" in "What's" matched every "guest's".
+**Result:** 2 of 5 off-topic questions are refused for free in both modes; the other 3 share a word with the documents ("night", "room") and are refused by the model. No answerable question is blocked in hybrid mode. In keyword-only mode the 2 blocked answerable questions are exactly the 2 that keyword search can't find anyway (jacket, Spanish).
+**Tradeoff:** The threshold is set on a small sample and needs rechecking when documents change.
+
+## 24. Private usage log and an owner-only Admin page
+**Context:** The owner needs cost, latency and quality signals from the public demo without exposing them.
+**Decision:** Every question writes one JSON line to `data/usage.jsonl` (git-ignored) and a line to stdout without the question text (readable in Streamlit Cloud's owner logs). The Admin page exists only when `ADMIN_PASSWORD` is set, is hidden from the menu until unlocked, compares with `hmac.compare_digest`, waits 1 second after a failure and locks for 15 minutes after 5. Prices come from `PRICE_IN_PER_M` / `PRICE_OUT_PER_M` and the page says the Console is the source of truth.
+**Tradeoff:** A shared password with a per-session lockout is demo protection, not authentication (SECURITY.md). Sign-in with roles comes in Project 4.
+
+## 25. Demo protections: per-session and daily limits
+**Context:** Anyone with the link can spend the owner's API credit.
+**Decision:** 20 questions per session and 200 per day across all visitors, both configurable. The daily count is a small file on the server written atomically, so refreshing or opening a new session doesn't reset it. Only questions that reach the API count toward the daily cap. Questions over 500 characters are refused on the server with a friendly message.
+**Result:** QA confirmed both messages, and that a refresh keeps the daily count.
+**Tradeoff:** On Streamlit Cloud the counter file is lost when the app restarts, so the cap is per day per app instance. A Console spending limit is the real backstop.
+
+## 26. Ship Claude Haiku 5.5 (final eval)
+**Context:** Decision 18 compared the models on 37 questions. The final eval has 54 questions (wrong facts, off-topic, escalation, cross-property) and the shipped settings: streaming, `max_tokens=1000`, default effort.
+**Result (hybrid retrieval, 3 runs each, same 54 questions):**
+
+| Metric | Claude Haiku 4.5 | Claude Haiku 5.5 (shipped) |
+|---|---|---|
+| Answer accuracy | 96% (94–98%) | **98%** (96–98%) |
+| Citation accuracy | 98% | 98% |
+| Numeric grounding | 96% | 97% |
+| Correct refusals | 100% | 100% |
+| Time to first word, p50 / p95 | **0.55s / 0.65s** | 0.97s / 1.97s |
+| Full answer, p50 / p95 | **0.99s / 1.56s** | 1.22s / 2.42s |
+| Cost per 1,000 questions | $1.01 | **$0.19** |
+
+Read by hand: Haiku 5.5's only miss besides the Spanish question is a grader false positive on q32 (it says the waiver note "is not hotel policy, so don't waive the fee"). Haiku 4.5's misses are real: "Yes, a 16-year-old can book a facial" (2 of 3 runs) and "You can issue a $120 credit without additional approval" (the limit is $50).
+**Decision:** Ship Haiku 5.5: quality equal or slightly better (about one question on this eval), no unsafe wrong answers, about 5× cheaper.
+**Tradeoff:** About 0.9s more at p95, still under the 3s target. Haiku 5.5 thinks before writing, which is most of the extra time to first word.
+
+## 27. A cited partial answer is not a refusal
+**Context:** In keyword-only mode the model twice gave a correct, cited partial answer and then added the exact refusal sentence ("…$120 is above that. I couldn't find this in the hotel's documents. Please check with a manager."). The app counted any answer containing that sentence as a refusal.
+**Decision:** The prompt says to use the refusal sentence alone, and for partial answers to answer what the sources cover and say in its own words what to check with a manager. Refusal detection now requires the sentence without a cited, substantive answer around it. Offline re-grading confirmed only those two answers changed classification before the final runs.
+**Result:** Both cases are answered correctly in the final keyword-only run. One side effect is now visible and kept as an honest miss: once in 3 runs, the smoke-alarm question (q51) got "please contact a manager right away" plus an unrelated smoking-fee note instead of the plain refusal. The safety manager note still appears.
+**Tradeoff:** A word-list grader keeps finding new phrasings (decision 16). The calibrated LLM judge in Project 3 is the proper fix.
+
+## 28. Streamlit Cloud runs keyword-only search
+**Context:** Hybrid search needs PyTorch. Measured on this machine: keyword-only uses about 100 MB of RAM and loads in about 5s; hybrid uses about 606 MB and loads in about 30s, plus about 780 MB of packages (on Linux, a plain `pip install torch` pulls several GB of CUDA libraries). Streamlit Community Cloud documents 690 MB of memory guaranteed, up to 2.7 GB.
+**Decision:** The cloud installs only `requirements.txt` and runs keyword-only; hybrid is for local use and Docker. Both modes have their own measured eval, and the How it works page states which mode is running and its accuracy.
+**Result:** Live demo (keyword-only): 96% retrieval (43/45), 96% answer accuracy, 26/27 correct refusals, p95 2.71s, $0.17 per 1,000 questions. Hybrid: 98% retrieval, 98% answers.
+**Tradeoff:** The live demo misses the two meaning-only questions (jacket, Spanish) and refuses them.
+
+## 29. Stream answers; measure time to first word
+**Context:** Staff are waiting with a guest; a 2-second blank screen feels slow even when the answer is fast.
+**Decision:** Answers stream with `st.write_stream`. Citations, source chips, grounding and manager notes are added when the answer completes. The eval uses the same streaming call and reports time to first word and full answer time.
+**Result:** Live demo: first word p50 0.89s, full answer p95 2.71s (target under 3s).
+
+## 30. Escape every dynamic string before display
+**Context:** "$50 per night … capped at $200" rendered as LaTeX math, because Streamlit treats text between two `$` signs as a formula. The same path could render HTML from model output, documents or visitor input.
+**Decision:** All dynamic text goes through `safe_markdown` (HTML-escaped, `$` escaped) or `html.escape` inside our own HTML; `unsafe_allow_html` is used only for static styling and a static diagram file. The same bug turned up in my own page text (the business value range) and was fixed the same way.
+**Result:** Unit tests with `<script>` and `<img onerror>` input; QA confirmed HTML in a question shows as plain text.
+
+## 31. One readable name per document, everywhere
+**Context:** The public UI showed file paths and folder names ("mountain-lodge/front_desk_notes.txt", "the beach-resort").
+**Decision:** One function builds every document name ("Mountain Lodge front desk notes", "Beach Resort restaurant menu", "Hotel Group Brand Standards"), used by source chips, the library, Insights and manager notes. The PDF generator now writes title metadata; extracted text is byte-identical, so the eval is unaffected. Source headers in the prompt use readable property names, so answers say "Beach Resort".
+**Result:** QA checks every public page, in both modes and at both widths, for file paths and folder names: none found.
+
+## 32. Measured AI cost in the business case
+**Context:** The business case assumed $0.003 per question. The eval now measures it.
+**Decision:** The calculator uses $0.0002 per question (measured $0.00016 keyword-only and $0.00018–0.00019 hybrid, rounded up). Every other input stays an assumption, labeled as such.
+**Result:** Projected net value for 2 properties: $8,524 / $31,887 / $66,451 (pessimistic / base / optimistic); 100 properties, base: $1,591,375. Still a projection, not a measured result.
+
+## 33. Python 3.12, because a pinned dependency required it
+**Context:** The first Docker build failed: `requirements.txt` pins `numpy~=2.5`, and NumPy 2.5 requires Python 3.12. The project said "Python 3.11 or 3.12", and CI, the Dockerfile and the Streamlit Cloud instructions all used 3.11, so none of them could have installed. Everything had actually been run on 3.12.7.
+**Decision:** Standardize on Python 3.12: `requires-python = ">=3.12"`, CI, the Docker base image, the README and the Streamlit Cloud instructions.
+**Tradeoff:** Python 3.11 is no longer supported. Relaxing the pin would keep 3.11, but the tested combination is 3.12.
+**Lesson:** A pin that was never installed on the claimed version is a claim, not a fact. The Docker build caught it before CI or a reviewer did.

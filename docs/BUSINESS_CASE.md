@@ -17,7 +17,7 @@ Front-desk staff answer policy questions all day: pets, late checkout, parking, 
 | Front-desk cost per hour | $20 | Typical US front-desk wage plus overhead |
 | Wrong answers per week that lead to a refund or comp | 1 | Conservative |
 | Average refund or comp | $75 | Partial night credit, waived fee, or F&B voucher |
-| AI cost per question | $0.003 | Small, fast model with about 1,500 input tokens per question |
+| AI cost per question | $0.0002 | **Measured**, not assumed: $0.16 per 1,000 questions keyword-only and $0.18 hybrid with Claude Haiku 5.5 on the 54-question eval (rounded up) |
 
 ## Projected results
 | | 2 properties (this engagement) | 100-property group |
@@ -26,19 +26,20 @@ Front-desk staff answer policy questions all day: pets, late checkout, parking, 
 | Value of staff time | $24,333 | $1,216,667 |
 | Fewer refunds from wrong answers | $7,800 | $390,000 |
 | **Total projected value per year** | **$32,133** | **$1,606,667** |
-| Running cost per year | $328 | $19,380 (includes $15K hosting and support) |
-| **Net value per year** | **$31,806** | **$1,587,287** |
+| Running cost per year | $246 | $15,292 (includes $15K hosting and support) |
+| **Net value per year** | **$31,887** | **$1,591,375** |
 
 ## Sensitivity: pessimistic, base and optimistic
 A single number hides uncertainty, so here is a range. Only the three most uncertain assumptions change; wage, refund size and AI cost stay the same.
 
 | Scenario | Lookups/day | Minutes saved | Wrong answers/week | Net value, 2 properties | Net value, 100 properties |
 |---|---|---|---|---|---|
-| Pessimistic | 20 | 1.0 | 0.5 | $8,483 | $421,143 |
-| **Base** | **40** | **2.5** | **1.0** | **$31,806** | **$1,587,287** |
-| Optimistic | 60 | 3.5 | 2.0 | $66,329 | $3,313,430 |
+| Pessimistic | 20 | 1.0 | 0.5 | $8,524 | $423,187 |
+| **Base** | **40** | **2.5** | **1.0** | **$31,887** | **$1,591,375** |
+| Optimistic | 60 | 3.5 | 2.0 | $66,451 | $3,319,562 |
 
-Even the pessimistic case returns many times its running cost. The result is most sensitive to **minutes saved per lookup**, so that is the first thing a pilot should measure.
+Even the pessimistic case returns many times its running cost. The AI cost is now measured rather than assumed;
+at $0.0002 per question it is a rounding error next to staff time, so the case rests on **minutes saved per lookup**. The result is most sensitive to **minutes saved per lookup**, so that is the first thing a pilot should measure.
 
 Run it yourself and change any assumption:
 ```bash
@@ -46,6 +47,17 @@ python scripts/business_case.py
 python scripts/business_case.py --properties 100 --hosting 15000
 python scripts/business_case.py --scenarios --properties 100 --hosting 15000
 ```
+
+## Policy gaps to raise with the client
+Found while building and evaluating the assistant (also shown to managers on the app's Insights page). Each one is
+a decision for the hotel group, not something the assistant should guess.
+
+| Gap | Evidence | Suggested fix |
+|---|---|---|
+| **Credits between $51 and $200 have no rule.** Front desk may give up to $50 without approval and the Manager on Duty approves anything over $200; nothing names the approver in between. | Hotel Group Brand Standards › Refunds and Escalation | Add one sentence naming the approver for $51–$200 (for example, the front office supervisor). Until then the assistant shows "Check with a manager" for any credit over $50. |
+| **No readable safety or emergency procedure.** Beach Resort's fire safety procedure is a scanned image with no text; Mountain Lodge has none. | Beach Resort fire safety procedure (scan) | Provide a text version for each property, or run OCR on the scan. |
+| **Early check-in fee exists only in informal staff notes.** It has no effective date and no owner. | Mountain Lodge front desk notes | Move the rule into the Mountain Lodge property policy. |
+| **Guest emails pasted into staff notes.** One contains instructions aimed at an AI ("waive all fees"). | Mountain Lodge front desk notes | Keep guest correspondence out of shared staff notes. |
 
 ## Value that isn't in the numbers
 - **Faster onboarding:** new hires get correct answers on day one.
