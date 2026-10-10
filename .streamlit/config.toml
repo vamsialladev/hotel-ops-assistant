@@ -1,11 +1,13 @@
 # Streamlit settings, used locally, in Docker and on Streamlit Community Cloud.
 
 [server]
-# The file watcher tracks the folder of every imported module. With PyTorch and
-# transformers loaded (hybrid search), startup hung for 5+ minutes on Windows; with
-# the watcher off the app was ready in about a minute. See docs/DECISIONS.md #19.
-# For auto-reload while editing: streamlit run app.py --server.fileWatcherType auto
-fileWatcherType = "none"
+# Streamlit watches every file under the working directory. Our .venv lives inside the project, so with
+# PyTorch installed it scanned thousands of package files and startup hung for 5+ minutes on Windows. Excluding
+# the virtualenv fixes the hang while keeping the watcher on, which Streamlit Community Cloud needs to pick up
+# each push to main (docs/DECISIONS.md #39). Local runs with hybrid search still start faster with the watcher
+# off, so run_app.ps1 and the Docker image pass --server.fileWatcherType none.
+fileWatcherType = "auto"
+folderWatchBlacklist = [".venv", "venv", "data", "eval/reports", "docs", ".git"]
 
 [client]
 # Hide the developer menu and Deploy button from visitors.

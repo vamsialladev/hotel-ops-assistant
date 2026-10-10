@@ -37,4 +37,5 @@ if (-not (Test-Path (Join-Path $PSScriptRoot "data\index\chunks.json"))) {
 }
 
 Write-Host "Starting the app at http://localhost:8501 (Ctrl+C to stop)..." -ForegroundColor Green
-& $python -m streamlit run app.py --server.port 8501
+# The watcher is off for local runs: with hybrid search it adds about a minute to startup (DECISIONS.md #39).
+& $python -m streamlit run app.py --server.port 8501 --server.fileWatcherType none
