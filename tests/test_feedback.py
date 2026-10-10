@@ -17,3 +17,11 @@ def test_feedback_is_appended_and_summarized(tmp_path):
 
 def test_summary_with_no_feedback(tmp_path):
     assert summary(tmp_path / "none.jsonl")["total"] == 0
+
+
+def test_thumbs_down_reason_is_saved_and_unknown_reasons_dropped(tmp_path):
+    path = tmp_path / "feedback.jsonl"
+    log_feedback("Dogs?", "beach-resort", RESULT, helpful=False, path=path, reason="Wrong property")
+    log_feedback("Dogs?", "beach-resort", RESULT, helpful=False, path=path, reason="<script>")
+    log_feedback("Dogs?", "beach-resort", RESULT, helpful=True, path=path, reason="Wrong fact")
+    assert [json.loads(line)["reason"] for line in path.read_text().splitlines()] == ["Wrong property", None, None]
