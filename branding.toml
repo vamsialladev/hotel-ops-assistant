@@ -1,0 +1,47 @@
+# White-label branding for client demos. Change these values to rebrand the app in a few minutes
+# (see README → "Rebrand for a client demo"). The "Demo with simulated hotel documents" label
+# is not configurable and always stays.
+
+[product]
+name = "Hotel Ops Assistant"
+full_name = "Hotel Operations Knowledge Assistant"
+tagline = "Correct, property-specific policy answers in seconds, with the source for every fact."
+hotel_group = "Hotel Group"
+logo = "assets/logo.svg"
+icon = "assets/favicon.png"
+
+[colors]
+# Light mode. Keep .streamlit/config.toml's primaryColor in sync with these.
+primary = "#1E4636"
+accent = "#94702C"
+# Lighter versions for dark backgrounds, for contrast.
+primary_dark = "#8CC7AA"
+accent_dark = "#DDB874"
+
+[links]
+case_study = "https://vamsialladev.github.io/projects/hotel-ops-assistant.html"
+github = "https://github.com/vamsialladev/hotel-ops-assistant"
+decisions = "https://github.com/vamsialladev/hotel-ops-assistant/blob/main/docs/DECISIONS.md"
+linkedin = "https://www.linkedin.com/in/vamsi-alla/"
+author = "Vamsi Alla"
+
+# One block per property folder in data/raw/. The folder name is the key.
+[properties.beach-resort]
+name = "Beach Resort"
+highlights = "rooftop pool, valet, spa"
+samples = [
+  "Can a guest bring their dog?",
+  "A Gold member wants late checkout on Saturday. How late can they stay?",
+  "How much is airport pickup from MIA?",
+  "What time is breakfast served?",
+]
+
+[properties.mountain-lodge]
+name = "Mountain Lodge"
+highlights = "dog-friendly, fire pits, airport shuttle"
+samples = [
+  "Can a guest bring their dog?",
+  "Can a guest check in early?",
+  "Where should a guest park their RV?",
+  "How many people fit on the garden lawn for a wedding?",
+]

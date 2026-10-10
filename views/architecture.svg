@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 430" role="img" aria-labelledby="arch-title arch-desc" style="width:100%;height:auto;max-width:760px;font-family:'Public Sans',system-ui,sans-serif">
+  <title id="arch-title">Architecture of the hotel operations assistant</title>
+  <desc id="arch-desc">Documents are cleaned, chunked and indexed. A staff question passes input and scope checks, searches only that property's documents, and Claude streams a cited answer that is checked for grounding and manager rules before it is shown and logged.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" style="fill:var(--hoa-muted)"/>
+    </marker>
+    <style>
+      .box{fill:var(--hoa-surface);stroke:var(--hoa-line);stroke-width:1.5}
+      .key{fill:var(--hoa-soft);stroke:var(--hoa-green);stroke-width:1.5}
+      .llm{fill:var(--hoa-soft);stroke:var(--hoa-brass);stroke-width:2}
+      .t{fill:var(--hoa-ink);font-size:15px;font-weight:700}
+      .s{fill:var(--hoa-muted);font-size:12.5px}
+      .lane{fill:var(--hoa-brass);font-size:12px;font-weight:700;letter-spacing:.08em}
+      .line{stroke:var(--hoa-muted);stroke-width:1.6;fill:none}
+    </style>
+  </defs>
+  <text class="lane" x="10" y="18">INDEXING · WHEN DOCUMENTS CHANGE</text>
+  <rect class="box" x="10" y="30" width="220" height="74" rx="12"/>
+  <text class="t" x="26" y="58">Hotel documents</text><text class="s" x="26" y="80">PDF, Markdown, staff notes</text>
+  <rect class="box" x="270" y="30" width="220" height="74" rx="12"/>
+  <text class="t" x="286" y="58">Clean and chunk</text><text class="s" x="286" y="80">skip superseded, strip footers,</text><text class="s" x="286" y="96">flag scans, tag property</text>
+  <rect class="key" x="530" y="30" width="220" height="74" rx="12"/>
+  <text class="t" x="546" y="58">Search index</text><text class="s" x="546" y="80">keywords (BM25) + meaning</text><text class="s" x="546" y="96">vectors when installed</text>
+  <path class="line" d="M230 67H266" marker-end="url(#arrow)"/><path class="line" d="M490 67H526" marker-end="url(#arrow)"/>
+
+  <text class="lane" x="10" y="146">ANSWERING · EVERY QUESTION</text>
+  <rect class="box" x="10" y="158" width="220" height="74" rx="12"/>
+  <text class="t" x="26" y="186">Question + property</text><text class="s" x="26" y="208">typed by front-desk staff</text>
+  <rect class="box" x="270" y="158" width="220" height="74" rx="12"/>
+  <text class="t" x="286" y="186">Input and scope checks</text><text class="s" x="286" y="208">length, limits, daily cap,</text><text class="s" x="286" y="224">off-topic refused for free</text>
+  <rect class="key" x="530" y="158" width="220" height="74" rx="12"/>
+  <text class="t" x="546" y="186">Property-filtered search</text><text class="s" x="546" y="208">this hotel + brand-wide,</text><text class="s" x="546" y="224">top 5 passages</text>
+  <path class="line" d="M230 195H266" marker-end="url(#arrow)"/><path class="line" d="M490 195H526" marker-end="url(#arrow)"/>
+  <path class="line" d="M640 104V154" marker-end="url(#arrow)"/>
+
+  <rect class="box" x="10" y="286" width="220" height="74" rx="12"/>
+  <text class="t" x="26" y="314">Answer card</text><text class="s" x="26" y="336">source chips, manager notes,</text><text class="s" x="26" y="352">👍 / 👎 feedback</text>
+  <rect class="box" x="270" y="286" width="220" height="74" rx="12"/>
+  <text class="t" x="286" y="314">Answer checks</text><text class="s" x="286" y="336">numbers grounded in sources,</text><text class="s" x="286" y="352">"check with a manager" rules</text>
+  <rect class="llm" x="530" y="286" width="220" height="74" rx="12"/>
+  <text class="t" x="546" y="314">Claude (streamed)</text><text class="s" x="546" y="336">cites every fact or refuses;</text><text class="s" x="546" y="352">documents are data, not orders</text>
+  <path class="line" d="M640 232V282" marker-end="url(#arrow)"/>
+  <path class="line" d="M530 323H494" marker-end="url(#arrow)"/><path class="line" d="M270 323H234" marker-end="url(#arrow)"/>
+
+  <rect class="box" x="10" y="388" width="740" height="36" rx="10" style="stroke-dasharray:4 4"/>
+  <text class="s" x="26" y="411">Private usage log (tokens, timing, cost estimate, refusals, grounding flags) → Insights for managers, Admin for the owner</text>
+</svg>
