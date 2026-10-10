@@ -1,28 +1,35 @@
 # Screenshots
 
-## Already included (real outputs, generated from this repo)
-| File | Shows | Used in |
+Every image here is real output from this repo. Regenerate them after changes so they always match the code.
+
+## Terminal output (rendered from real command output)
+| File | Shows | How to regenerate |
 |---|---|---|
-| `tests.png` | `pytest -v --cov`: 31 passed, 92% coverage | README → Testing |
-| `eval-retrieval.png` | 37-question eval, 32/34 strict retrieval | README → Results |
-| `business-case.png` | Calculator scenarios, 100 properties | README → Business value |
+| `eval-retrieval.png` | 54-question eval, hybrid: retrieval, scope and escalation checks | `python -m eval.run_eval > out.txt`, then `python scripts/render_terminal.py out.txt docs/images/eval-retrieval.png --command "python -m eval.run_eval" --title "hotel-ops-assistant: retrieval, scope and escalation eval (hybrid)"` |
+| `tests.png` | `pytest` with coverage: 148 passed, 96% | `python -m pytest -q --cov=src --cov=eval > out.txt`, then render as above |
+| `business-case.png` | Calculator scenarios, 100 properties (projection) | `python scripts/business_case.py --scenarios --properties 100 --hosting 15000 > out.txt`, then render |
 
-Regenerate them after changes so they always match the code.
+## App screenshots (captured from the running app with real questions)
+Start the app (`streamlit run app.py`), then run `python scripts/capture_screenshots.py`. It asks about 9 real
+questions (about $0.002) and never captures the Admin page.
 
-## Capture these yourself (they need your API key)
-Run `streamlit run app.py`, make the browser window about 1200px wide, and capture with **Win + Shift + S**.
+| File | Shows |
+|---|---|
+| `demo.gif` | A question typed and the answer streaming in (about 10 s, under 1 MB) |
+| `assistant-welcome.png` | Empty conversation: welcome, what it can and can't do, sample questions |
+| `answer-sources.png` | Gold member late checkout at Beach Resort, with sources expanded |
+| `two-properties.png` | The dog question at both properties, side by side |
+| `check-with-manager.png` | A $300 refund question with the manager note quoting the rule |
+| `refusal.png` | Fire assembly point: refused, with the safety note |
+| `insights.png`, `library.png`, `how-it-works.png` | The manager and engineer pages |
+| `assistant-light.png`, `assistant-dark.png` | The Assistant in light and dark mode |
+| `phone.png` | The Assistant at phone width (390 px) |
 
-| File | Property | Question | Before capturing |
-|---|---|---|---|
-| `answer.png` | beach-resort | A Gold member wants late checkout on Saturday. How late? | Open "Sources used" |
-| `two-properties.png` | both | Can a guest bring their dog? | Capture both answers, place side by side |
-| `refusal.png` | beach-resort | Where is the fire assembly point? | Shows the yellow refusal |
-| `demo.gif` | beach-resort | Any 2 questions | Record 10–15 seconds with ScreenToGif, under 5 MB |
-| `ci.png` | n/a | GitHub → Actions tab | After your first push shows a green check |
-
-Then open the main README and remove the `<!--` and `-->` markers around the hero GIF and the app screenshot table.
+Clear `data/usage.jsonl` and `data/feedback.jsonl` before capturing, so Insights shows only the capture session.
+For a design review of every page in both modes and both widths: `python scripts/capture_review.py --phone`.
 
 ## Checklist before committing an image
-- No API key, `.env`, or personal browser tabs visible
+- No API key, `.env`, admin page or personal browser tabs visible
+- Only real answers and real usage; no made-up data
 - Text is readable without zooming
-- File under 1 MB for PNG, under 5 MB for GIF
+- PNG under 1 MB where possible, GIF under 5 MB
