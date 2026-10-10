@@ -37,3 +37,24 @@ def test_no_password_configured_means_no_admin():
 
 def test_password_comparison_handles_unicode_and_empty_input():
     assert password_matches("pässwörd", "pässwörd") and not password_matches("", "x")
+
+
+def test_sign_out_locks_the_page():
+    from src.admin import sign_out
+
+    state = GateState()
+    attempt(state, "s3cret-pass", "s3cret-pass", now=100)
+    sign_out(state)
+    assert not state.unlocked and state.last_active == 0.0
+
+
+def test_auto_lock_after_30_minutes_without_activity():
+    from src.admin import still_signed_in
+
+    state = GateState()
+    attempt(state, "s3cret-pass", "s3cret-pass", now=0)
+    assert still_signed_in(state, now=29 * 60, idle_seconds=30 * 60)  # activity resets the clock
+    assert still_signed_in(state, now=58 * 60, idle_seconds=30 * 60)
+    assert not still_signed_in(state, now=58 * 60 + 30 * 60 + 1, idle_seconds=30 * 60)
+    assert not state.unlocked
+    assert not still_signed_in(GateState(), now=0, idle_seconds=60)  # never signed in

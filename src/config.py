@@ -45,6 +45,13 @@ PRICE_IN_PER_M = _float("PRICE_IN_PER_M")
 PRICE_OUT_PER_M = _float("PRICE_OUT_PER_M")
 
 
+# Owner monitoring (Admin page): show a warning when either threshold is crossed today.
+ALERT_ERROR_RATE = float(os.getenv("ALERT_ERROR_RATE", "0.2"))  # errors / (questions + errors) today
+ALERT_MIN_EVENTS = int(os.getenv("ALERT_MIN_EVENTS", "5"))  # don't alert on 1 error out of 2 questions
+ALERT_DAILY_COST_USD = float(os.getenv("ALERT_DAILY_COST_USD", "1.00"))  # estimated cost today
+ADMIN_IDLE_MINUTES = int(os.getenv("ADMIN_IDLE_MINUTES", "30"))  # Admin page locks itself after this
+
+
 def admin_password() -> str | None:
     """Read at call time so a secret added on Streamlit Cloud is picked up. Never log the value."""
     return os.getenv("ADMIN_PASSWORD") or None

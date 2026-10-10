@@ -10,10 +10,17 @@ FEEDBACK_FILE = LOG_DIR / "feedback.jsonl"
 
 
 def log_feedback(
-    question: str, prop: str, result: dict, helpful: bool, path: Path = FEEDBACK_FILE, reason: str | None = None
+    question: str,
+    prop: str,
+    result: dict,
+    helpful: bool,
+    path: Path = FEEDBACK_FILE,
+    reason: str | None = None,
+    turn_id: str | None = None,
 ) -> dict:
     record = {
         "time": now_iso(),
+        "turn_id": turn_id,
         "property": prop,
         "question": question,
         "answer": result["answer"],
