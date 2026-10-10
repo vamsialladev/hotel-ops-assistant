@@ -23,7 +23,7 @@
 | **Problem** | Staff search scattered PDFs, menus and notes while a guest waits, and the rules differ by hotel. Wrong answers turn into refunds and complaints. |
 | **Solution** | Pick your property, ask in plain English, and get a 1–4 sentence answer that cites every fact. It refuses when the documents don't say, corrects wrong facts in the question, and points to a manager for refunds and safety. |
 | **Projected value** | ~$32K/yr net for 2 properties (range $8.5K–$66K); ~$1.6M/yr at 100-property scale ([assumptions](docs/BUSINESS_CASE.md)) |
-| **Quality (measured)** | 54-question eval, 3 runs: **98% answer accuracy** with hybrid search, **96%** on the live demo's keyword-only search; 100% of escalation rules correct; full answer p95 **2.4–2.7s**; **$0.17–0.19 per 1,000 questions**. 181 unit tests, 96% coverage. |
+| **Quality (measured)** | 54-question eval, 3 runs: **98% answer accuracy** with hybrid search, **96%** on the live demo's keyword-only search; 100% of escalation rules correct; full answer p95 **2.4–2.7s**; **$0.17–0.19 per 1,000 questions**. 184 unit tests, 96% coverage. |
 
 ## Where to start
 
@@ -235,9 +235,9 @@ Every finding is in [DECISIONS.md](docs/DECISIONS.md) with its context, decision
 | Working with messy, real-world data | [Messy data handling](#how-it-handles-messy-real-world-data), `src/ingest.py`, Document library |
 | Building reliable AI retrieval | Property-filtered hybrid search, scope check, refusals, grounding check |
 | Measuring quality, not guessing | [Eval harness](eval/), [Results](#results), raw answers saved per run |
-| Debugging with evidence | [DECISIONS.md](docs/DECISIONS.md) 13–38: grader bugs, the $75 root cause, the Streamlit startup hang, an uninstallable pin, a Windows file race reproduced with two processes |
+| Debugging with evidence | [DECISIONS.md](docs/DECISIONS.md) 13–39: grader bugs, the $75 root cause, the Streamlit startup hang, an uninstallable pin, a Windows file race reproduced with two processes |
 | Shipping a product people can use | Multi-page app, streaming, light/dark, phone layout, white-label branding |
-| Production engineering habits | 181 tests, CI with audit and coverage gates, Docker, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
+| Production engineering habits | 184 tests, CI with audit and coverage gates, Docker, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
 | Translating tech into business value | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md), the Insights page for managers |
 
 ## Project structure
@@ -275,7 +275,8 @@ hotel-ops-assistant/
 
 **Requirements:** Python 3.12 and an [Anthropic API key](https://console.anthropic.com).
 
-**One click on Windows (after the first setup below):** double-click `run_app.bat`, or run `.un_app.ps1`. It uses the `.venv`, checks that `.env` exists, builds the index if it's missing, and opens the app at http://localhost:8501.
+**One click on Windows (after the first setup below):** double-click `run_app.bat`, or run `.
+un_app.ps1`. It uses the `.venv`, checks that `.env` exists, builds the index if it's missing, and opens the app at http://localhost:8501.
 
 **Windows (PowerShell), first setup**
 ```powershell
@@ -344,7 +345,8 @@ All settings live in `.env` (copy it from `.env.example`). On Streamlit Cloud, a
 | Install light core only (keyword search) | `pip install -r requirements.txt` | |
 | Build the search index | `python -m src.ingest` | `make index` |
 | Build index without embeddings | `python -m src.ingest --bm25-only` | |
-| Run the app with one click (Windows) | double-click `run_app.bat`, or `.un_app.ps1` | |
+| Run the app with one click (Windows) | double-click `run_app.bat`, or `.
+un_app.ps1` | |
 | Run the web app | `streamlit run app.py` | `make app` |
 | Ask from the command line | `python ask.py beach-resort "Can a guest bring a dog?"` | `make demo` |
 | Unit tests with coverage | `python -m pytest -q --cov=src --cov=eval` | `make test` |
@@ -368,7 +370,7 @@ All settings live in `.env` (copy it from `.env.example`). On Streamlit Cloud, a
 | `No module named src` | Run commands from the project root folder |
 | `No matching distribution found for numpy~=2.5` | Use Python 3.12 (NumPy 2.5 doesn't support 3.11) |
 | "The demo is temporarily unavailable" | Check `ANTHROPIC_API_KEY` (no quotes or spaces) and your credit balance; the real error is in the logs and on the Admin page |
-| Page stuck on "Starting up the assistant" for minutes | The first start downloads the embedding model; make sure `.streamlit/config.toml` is present (it turns off the file watcher that hangs with PyTorch) |
+| Page stuck on "Starting up the assistant" for minutes | The first start downloads the embedding model. Keep `.streamlit/config.toml` (it stops Streamlit watching `.venv`), and use `run_app.ps1`, which also turns the watcher off for a faster local start |
 | Windows: "running scripts is disabled" | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
 | PyTorch fails to install | Use Python 3.12, or run keyword-only with `requirements.txt` |
 | Answer uses an old policy | Mark the old file `status: superseded` and rebuild the index |
@@ -422,7 +424,7 @@ Streamlit Cloud keeps logs, the error list and the daily counter only until the 
 ## Testing and quality
 
 ```bash
-python -m pytest -q --cov=src --cov=eval   # 181 unit tests, 96% coverage
+python -m pytest -q --cov=src --cov=eval   # 184 unit tests, 96% coverage
 python -m eval.run_eval                    # retrieval, scope and escalation eval (free)
 python -m eval.run_eval --answers --runs 3 --price-in 0.10 --price-out 0.50
 ruff check . && ruff format --check .      # lint and format
@@ -430,9 +432,9 @@ pip-audit -r requirements.txt              # known vulnerabilities
 ```
 
 <details>
-<summary>Test run: 181 passed, 96% coverage</summary>
+<summary>Test run: 184 passed, 96% coverage</summary>
 <br>
-<img src="docs/images/tests.png" alt="pytest output: 181 tests passed with 96.36% coverage" width="700">
+<img src="docs/images/tests.png" alt="pytest output: 184 tests passed with 96.36% coverage" width="700">
 </details>
 
 CI runs on the light install (no PyTorch): lint, format check, `pip-audit`, tests with a 70% minimum coverage, and a keyword-only retrieval regression gate (fails below 85%). Dependabot opens weekly update pull requests. Before release, a scripted Playwright QA pass clicked through every public page in light and dark mode at laptop and phone width (251 checks: links, text, limits, errors, admin lockout, console errors).
@@ -457,7 +459,7 @@ Only synthetic policy documents are indexed; no guest or payment data. Each ques
 |---|---|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System and request-flow diagrams, components, scaling path |
 | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md) | Value model, assumptions, policy gaps, pilot plan, KPIs, risks |
-| [DECISIONS.md](docs/DECISIONS.md) | 38 decisions with context, decision, tradeoff and result |
+| [DECISIONS.md](docs/DECISIONS.md) | 39 decisions with context, decision, tradeoff and result |
 | [ENGINEERING_LOG.md](docs/ENGINEERING_LOG.md) | What broke and how it was fixed, in my own words |
 | [DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Word-for-word 2-minute walkthrough |
 | [VALIDATION_CHECKLIST.md](docs/VALIDATION_CHECKLIST.md) | Steps that need a person: measured baseline, held-out questions |

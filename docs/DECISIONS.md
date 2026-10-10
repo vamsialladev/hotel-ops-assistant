@@ -233,3 +233,9 @@ Read by hand: Haiku 5.5's only miss besides the Spanish question is a grader fal
 ## 38. The Codespaces dev container uses Python 3.12
 **Context:** Streamlit Cloud's "Dev Container" commit used a Python 3.11 image, where `numpy~=2.5` can't install (decision 33).
 **Decision:** Switch the image to `python:1-3.12-bookworm`. Its `postAttachCommand` turns off Streamlit's CORS and XSRF protection; that only affects the Codespaces preview, not the live app, and is left as generated.
+
+## 39. Keep Streamlit's file watcher on, but never let it scan the virtualenv
+**Context:** After the 1.3.1 push, the live app kept serving the old code. Decision 19 had turned the file watcher off to fix a Windows startup hang, but Streamlit only reloads changed scripts when its watcher sees them, so Streamlit Cloud pulled each push and kept running the cached version. Looking again at the hang: Streamlit watches every file under the working directory, and our `.venv` lives inside the project, so with PyTorch installed it was scanning thousands of package files. Decision 19's explanation (every imported module) was close but not exact.
+**Decision:** `.streamlit/config.toml` keeps the watcher on with `folderWatchBlacklist` excluding `.venv`, `venv`, `data`, `docs`, `eval/reports` and `.git`. Local runs and Docker pass `--server.fileWatcherType none`, because they never need reload-on-push.
+**Result:** Measured on this machine with hybrid search: first page in 92s with the watcher on and `.venv` excluded (it never finished in 5+ minutes before), and 36s with the watcher off. Streamlit Cloud (keyword-only, no PyTorch) can reload on push again; the running cloud app needed one manual reboot to pick up the new config.
+**Tradeoff:** A plain `streamlit run app.py` with hybrid search starts about a minute slower than `run_app.ps1`.

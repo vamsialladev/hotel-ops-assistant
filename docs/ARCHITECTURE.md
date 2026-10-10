@@ -85,7 +85,7 @@ sequenceDiagram
 | Pages | `app.py`, `views/` | Thin Streamlit pages; no logic beyond wiring |
 | CLI | `ask.py` | Quick command-line questions |
 | Evaluation | `eval/run_eval.py`, `eval/metrics.py`, `eval/questions.jsonl` | 54 questions; strict retrieval, answers, grounding, refusals, scope, escalation, latency, cost |
-| Tests | `tests/` | 181 tests, including every page rendered with `AppTest`; no API key or PyTorch needed |
+| Tests | `tests/` | 184 tests, including every page rendered with `AppTest`; no API key or PyTorch needed |
 
 ## Deployment modes
 | | Streamlit Community Cloud (live demo) | Docker (local or always-on host) |
@@ -97,7 +97,7 @@ sequenceDiagram
 | Logs | Reset when the app restarts | Persist for the container's life (mount a volume to keep them) |
 
 ## Key design choices
-See [DECISIONS.md](DECISIONS.md) for all 38. In short:
+See [DECISIONS.md](DECISIONS.md) for all 39. In short:
 - **Hybrid search**, because staff use exact terms (prices, airport codes) and loose phrasing; keyword-only where memory is tight.
 - **Property filter before search**, because a correct answer from the wrong hotel is still wrong.
 - **Refuse rather than guess, and refuse off-topic questions for free.**

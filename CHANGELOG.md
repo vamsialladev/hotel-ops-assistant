@@ -13,7 +13,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow
 - One-click Windows launcher: `run_app.bat` / `run_app.ps1`.
 - README: Monitoring section, live demo link, auto-redeploy note, and a note on AI-assisted development.
 - Tests: every page rendered with `AppTest`, with and without an injected exception; button state; file
-  races; monitoring; sign out and auto-lock (181 tests, 96% coverage).
+  races; monitoring; sign out and auto-lock (184 tests, 96% coverage).
 
 ### Changed
 - "New conversation" is disabled with a tooltip when the conversation is empty, and shows a toast when it clears.
@@ -23,6 +23,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow
 ### Fixed
 - Crash on the Assistant page when two app instances share `data/` on Windows (file-sharing `PermissionError`
   on the daily counter and logs), reproduced with a two-process test and fixed with retries and safe fallbacks.
+- Streamlit Cloud kept serving old code after a push: the file watcher was off (decision 19). It's back on with
+  `.venv` excluded, which also fixes the original startup hang; local runs and Docker turn it off for speed.
 
 ## [1.3.0] - 2026-10-09
 First release run for real: on Windows, with the Streamlit app, hybrid search and real Claude answers (the
