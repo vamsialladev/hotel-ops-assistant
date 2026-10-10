@@ -27,12 +27,56 @@ class Chunk:
     section: str  # heading path, e.g. "Policies > Pets"
     page: int | None  # PDF page number, if any
     effective: str | None
+    title: str = ""  # human-readable document name, shown on source chips
 
 
 def contextual_text(chunk: dict) -> str:
     """Text used for search: adds property + section so a chunk that just says
     '$75 per stay' can still be found by a question about Miami pets."""
     return f"Property: {chunk['property']}\nSection: {chunk['section']}\n{chunk['text']}"
+
+
+def display_title(rel: str, meta: dict) -> str:
+    """Short document title: 'Spa Menu - Beach Resort' -> 'Spa Menu', 'Beach Resort - Property Policies' ->
+    'Beach Resort policies', and a readable file name when there's no title ('front_desk_notes.txt' ->
+    'Front desk notes')."""
+    title = meta.get("title")
+    if title:
+        name, _, kind = title.partition(" - ")
+        if kind.lower().startswith("property policies"):  # keep any suffix, e.g. "(2024)"
+            return f"{name} policies{kind[len('property policies') :]}"
+        return name if kind else title
+    stem = Path(rel).stem.replace("_", " ").strip()
+    return stem[:1].upper() + stem[1:]
+
+
+def property_label(prop: str) -> str:
+    return prop.replace("-", " ").title()
+
+
+def document_name(rel: str, meta: dict) -> str:
+    """The one readable name used everywhere in the UI: 'Mountain Lodge front desk notes',
+    'Beach Resort restaurant menu', 'Hotel Group Brand Standards'. Never a file path."""
+    prop = rel.split("/", 1)[0]
+    title = display_title(rel, meta)
+    if prop == "shared" or title.lower().startswith(property_label(prop).lower()):
+        return title
+    words = [w if w.isupper() and len(w) > 1 else w.lower() for w in title.split()]
+    return f"{property_label(prop)} {' '.join(words)}"
+
+
+def pdf_meta(path: Path) -> dict:
+    """PDF title metadata, when the PDF has a real one."""
+    from pypdf import PdfReader
+
+    title = (PdfReader(str(path)).metadata or {}).get("/Title", "")
+    return {"title": title} if title and title.lower() != "untitled" else {}
+
+
+def document_meta(path: Path) -> dict:
+    if path.suffix.lower() == ".pdf":
+        return pdf_meta(path)
+    return parse_front_matter(path.read_text(encoding="utf-8"))[0]
 
 
 def parse_front_matter(text: str):
@@ -119,12 +163,13 @@ def load_chunks():
         prop = path.relative_to(RAW_DIR).parts[0]
 
         if path.suffix.lower() == ".pdf":
+            title = document_name(rel, pdf_meta(path))
             for page, text in load_pdf_pages(path):
                 if len(text.strip()) < 30:
                     print(f"  ! {rel} page {page}: almost no text (scanned page? needs OCR)")
                     continue
                 for j, (_, piece) in enumerate(split_by_headings(text)):
-                    chunks.append(Chunk(f"{rel}#p{page}-{j}", piece, prop, rel, f"Page {page}", page, None))
+                    chunks.append(Chunk(f"{rel}#p{page}-{j}", piece, prop, rel, f"Page {page}", page, None, title))
             continue
 
         meta, body = parse_front_matter(path.read_text(encoding="utf-8"))
@@ -133,7 +178,8 @@ def load_chunks():
             continue
         pieces = split_by_headings(body) if path.suffix.lower() == ".md" else split_notes(body)
         for j, (section, piece) in enumerate(pieces):
-            chunks.append(Chunk(f"{rel}#{j}", piece, prop, rel, section, None, meta.get("effective")))
+            title = document_name(rel, meta)
+            chunks.append(Chunk(f"{rel}#{j}", piece, prop, rel, section, None, meta.get("effective"), title))
     return [asdict(c) for c in chunks]
 
 

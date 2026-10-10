@@ -73,6 +73,7 @@ def restaurant_menu():
     ]
     path = RAW / "beach-resort" / "restaurant_menu.pdf"
     c = canvas.Canvas(str(path), pagesize=letter)
+    c.setTitle(title)  # read by ingestion as the document's display name
     for i, lines in enumerate(pages, 1):
         header_footer(c, title, i, len(pages))
         write_lines(c, lines)
@@ -95,6 +96,7 @@ def events_weddings():
     ]
     path = RAW / "mountain-lodge" / "events_weddings.pdf"
     c = canvas.Canvas(str(path), pagesize=letter)
+    c.setTitle(title)
     header_footer(c, title, 1, 1)
     write_lines(c, lines)
     c.save()
@@ -117,6 +119,7 @@ def scanned_page():
     buf.seek(0)
     path = RAW / "beach-resort" / "fire_safety_scan.pdf"
     c = canvas.Canvas(str(path), pagesize=letter)
+    c.setTitle("Fire Safety Procedure - Beach Resort")
     c.drawImage(ImageReader(buf), 0, 0, W, H)
     c.save()
     return path
