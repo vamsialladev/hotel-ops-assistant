@@ -15,3 +15,6 @@ data/*.json
 logs/
 .streamlit/secrets.toml
 review/
+
+# Demo video and its raw recording (published on the portfolio site, not in this repo)
+docs/video/
