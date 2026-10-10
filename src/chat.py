@@ -67,6 +67,10 @@ class ChatState:
         self.histories[prop] = []
         return removed
 
+    def has_messages(self, prop: str) -> bool:
+        """'New conversation' is enabled only when this property's conversation has something to clear."""
+        return bool(self.histories.get(prop))
+
     def find(self, turn_id: str) -> Turn | None:
         return next((t for turns in self.histories.values() for t in turns if t.id == turn_id), None)
 

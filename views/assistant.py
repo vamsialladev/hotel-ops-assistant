@@ -8,7 +8,7 @@ from src import service
 from src.chat import FEEDBACK_REASONS, Turn, remaining, validate_question
 from src.config import MAX_QUESTION_CHARS, MAX_QUESTIONS_PER_SESSION
 from src.display import esc, quote_markdown, safe_markdown, scope_label, source_chip_html, source_label
-from src.errors import UNAVAILABLE, classify, private_detail
+from src.errors import UNAVAILABLE, classify, private_detail, record_error
 from src.escalation import RULES_BY_ID
 from src.feedback import log_feedback
 from src.generate import AnswerStream
@@ -25,31 +25,44 @@ SESSION_LIMIT = (
     "The How it works page shows the measured results."
 )
 DAILY_LIMIT = "The demo has reached its daily question limit. Please come back tomorrow."
+PAGE_ERROR_SHORT = "That didn't work. Please try again; the error was logged for the app owner."
 USER_AVATAR, BOT_AVATAR = ":material/person:", ui.asset("assets/favicon.png")
 
 
+NEW_CHAT_TOAST = "Started a new conversation"
+NEW_CHAT_EMPTY_HELP = "This conversation is already empty"
+guard = ui.safe_callback("Assistant")
+
+
 # ---------- callbacks (run before the rerun, so history is never lost and nothing is re-asked) ----------
+@guard
 def ask_later(question: str):
     st.session_state.pending = question
 
 
+@guard
 def new_conversation(prop: str):
-    """Clear only this property's chat, drop the cleared turns' feedback widgets, and scroll to the top.
-    The question limits are not reset."""
+    """Clear only this property's chat, drop the cleared turns' feedback widgets, scroll to the top and
+    confirm with a toast. The question limits are not reset."""
+    if not chat.has_messages(prop):
+        return
     for turn_id in chat.clear(prop):
         for prefix in ("reason_", "send_", "skip_", "up_", "down_"):
             st.session_state.pop(f"{prefix}{turn_id}", None)
     st.session_state.pop("pending", None)
     st.session_state.scroll_top = True
+    st.session_state.toast = NEW_CHAT_TOAST
 
 
+@guard
 def feedback(turn_id: str, helpful: bool, reason: str | None = None):
     turn = chat.find(turn_id)
     if turn and turn.result and turn.feedback in (None, "down_pending"):
-        log_feedback(turn.question, turn.property, turn.result, helpful=helpful, reason=reason)
+        log_feedback(turn.question, turn.property, turn.result, helpful=helpful, reason=reason, turn_id=turn.id)
         turn.feedback, turn.reason = ("up" if helpful else "down"), reason
 
 
+@guard
 def ask_reason(turn_id: str):
     turn = chat.find(turn_id)
     if turn and turn.feedback is None:
@@ -145,10 +158,12 @@ def handle(raw: str, prop: str):
         prep = service.prepare(retriever, question, prop)
         if prep["blocked"]:  # off-topic or nothing found: answered without an API call
             turn.result = service.finalize(question, prop, service.blocked_result())
-            log_usage(service.usage_record(question, prop, retriever.mode, turn.result, pre_api=True))
+            log_usage(service.usage_record(question, prop, retriever.mode, turn.result, pre_api=True, turn_id=turn.id))
         elif not ui.daily_counter().try_consume():
             turn.error = DAILY_LIMIT
-            log_usage(service.usage_record(question, prop, retriever.mode, pre_api=True, error="daily_cap"))
+            log_usage(
+                service.usage_record(question, prop, retriever.mode, pre_api=True, error="daily_cap", turn_id=turn.id)
+            )
         else:
             waiting = st.empty()
             waiting.caption("Checking the hotel's documents...")
@@ -159,15 +174,25 @@ def handle(raw: str, prop: str):
                 waiting.empty()
                 code = classify(exc)
                 log.error("answer failed: %s %s", code, private_detail(exc))
+                record_error("Assistant", exc)
                 turn.error = UNAVAILABLE
-                log_usage(service.usage_record(question, prop, retriever.mode, hits=prep["hits"], error=code))
+                log_usage(
+                    service.usage_record(question, prop, retriever.mode, hits=prep["hits"], error=code, turn_id=turn.id)
+                )
                 chat.add(turn)
                 render_answer(turn)
                 return
             turn.result = service.finalize(question, prop, run.result)
             log_usage(
                 service.usage_record(
-                    question, prop, retriever.mode, turn.result, prep["hits"], run.time_to_first_token, run.total_time
+                    question,
+                    prop,
+                    retriever.mode,
+                    turn.result,
+                    prep["hits"],
+                    run.time_to_first_token,
+                    run.total_time,
+                    turn_id=turn.id,
                 )
             )
             chat.add(turn)
@@ -188,18 +213,17 @@ prop = st.segmented_control("Your property", props, format_func=b.property_name,
 st.html(f'<div class="hoa-property"><b>{esc(b.property_name(prop))}</b><span>{esc(b.highlights(prop))}</span></div>')
 
 with st.sidebar:
-    st.button(
-        "New conversation",
-        key="new_conversation",
-        icon=":material/add_comment:",
-        on_click=new_conversation,
-        args=(prop,),
-        width="stretch",
-    )
-    questions_left = st.empty()  # filled in at the end, after this run's question is counted
+    # Both filled in at the end of the page, after this run's question is counted, so the button is
+    # enabled as soon as the first answer appears.
+    new_chat_slot = st.empty()
+    questions_left = st.empty()
 
 if st.session_state.pop("scroll_top", False):
     ui.scroll_to_top()
+if message := st.session_state.pop("toast", None):
+    st.toast(message, icon=":material/check_circle:")
+if st.session_state.pop("callback_error", False):
+    st.warning(PAGE_ERROR_SHORT, icon=":material/error:")
 
 typed = st.chat_input(PLACEHOLDER, max_chars=2000)
 incoming = typed or st.session_state.pop("pending", None)
@@ -240,6 +264,17 @@ if incoming:
     handle(incoming, prop)
 
 ui.footer()
+has_messages = chat.has_messages(prop)
+new_chat_slot.button(
+    "New conversation",
+    key="new_conversation",
+    icon=":material/add_comment:",
+    on_click=new_conversation,
+    args=(prop,),
+    width="stretch",
+    disabled=not has_messages,
+    help=None if has_messages else NEW_CHAT_EMPTY_HELP,
+)
 questions_left.caption(
     f"{remaining(chat.asked, MAX_QUESTIONS_PER_SESSION)} of {MAX_QUESTIONS_PER_SESSION} demo questions left "
     "in this session."

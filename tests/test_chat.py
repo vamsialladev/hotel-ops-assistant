@@ -56,3 +56,12 @@ def test_session_limit_counter():
 
 def test_feedback_reasons_are_the_agreed_list():
     assert FEEDBACK_REASONS == ("Wrong fact", "Missing information", "Wrong property", "Unclear", "Other")
+
+
+def test_new_conversation_is_only_available_when_there_is_something_to_clear():
+    state = ChatState()
+    assert not state.has_messages("beach-resort")
+    state.add(Turn("Dogs?", "beach-resort"))
+    assert state.has_messages("beach-resort") and not state.has_messages("mountain-lodge")
+    state.clear("beach-resort")
+    assert not state.has_messages("beach-resort")
