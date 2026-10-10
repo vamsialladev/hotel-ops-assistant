@@ -1,8 +1,18 @@
 .env
+.streamlit/secrets.toml
 .venv
 venv
 __pycache__
 .git
+.pytest_cache
+.ruff_cache
+.coverage
 data/index
-eval/reports/*.md
+# Runtime logs and counters: never baked into an image
+data/*.jsonl
+data/*.json
+logs
+review
+docs/images
+# Raw answer dumps are large; the .md eval reports stay (the How it works page reads them)
 eval/reports/*.jsonl
