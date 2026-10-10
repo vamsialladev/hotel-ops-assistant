@@ -3,7 +3,10 @@
 Only static markup or `esc()`-escaped values go into HTML here.
 """
 
+import functools
 import logging
+import time
+from contextlib import contextmanager
 from pathlib import Path
 
 import streamlit as st
@@ -12,6 +15,7 @@ from src.branding import DEMO_LABEL, load_branding
 from src.chat import ChatState
 from src.config import INDEX_DIR, LOG_DIR, MAX_QUESTIONS_PER_DAY, ROOT, USE_EMBEDDINGS
 from src.display import esc
+from src.errors import PAGE_ERROR, is_control_flow, record_error
 from src.limits import DailyCounter
 
 HERE = Path(__file__).parent
@@ -37,6 +41,44 @@ def retriever():
 @st.cache_resource(show_spinner=False)
 def daily_counter():
     return DailyCounter(LOG_DIR / "daily_count.json", MAX_QUESTIONS_PER_DAY)
+
+
+@st.cache_resource(show_spinner=False)
+def app_started() -> float:
+    """Time of the first page view since the server started (cached for the life of the process)."""
+    return time.time()
+
+
+@contextmanager
+def error_boundary(page: str):
+    """Top-level guard for every page: an unexpected exception shows a friendly message, is recorded for the
+    owner (Admin page + stdout), and never reaches Streamlit's crash screen. st.rerun / st.stop pass through."""
+    try:
+        yield
+    except BaseException as exc:
+        if is_control_flow(exc):
+            raise
+        logging.getLogger("hotel_ops.app").exception("page error on %s", page)
+        record_error(page, exc)
+        st.error(PAGE_ERROR, icon=":material/error:")
+
+
+def safe_callback(page: str):
+    """Same guard for button callbacks, which Streamlit runs before the page script."""
+
+    def wrap(fn):
+        @functools.wraps(fn)
+        def guarded(*args, **kwargs):
+            try:
+                return fn(*args, **kwargs)
+            except Exception as exc:
+                logging.getLogger("hotel_ops.app").exception("callback error on %s", page)
+                record_error(page, exc)
+                st.session_state.callback_error = True
+
+        return guarded
+
+    return wrap
 
 
 def asset(path: str) -> str:

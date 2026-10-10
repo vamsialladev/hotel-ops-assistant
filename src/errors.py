@@ -3,6 +3,7 @@
 Visitors never see raw exceptions, stack traces or which limit was hit on the API side.
 """
 
+import logging
 import re
 
 import anthropic
@@ -42,3 +43,41 @@ def private_detail(exc: Exception, limit: int = 300) -> str:
 
 def mask_secrets(text: str) -> str:
     return re.sub(r"sk-ant-[A-Za-z0-9_\-]+", "sk-ant-***", text)
+
+
+# ---------- Error log for the owner's Admin page ----------
+PAGE_ERROR = "Something went wrong on this page. Please try again; the error was logged for the app owner."
+ERRORS_FILE = None  # resolved at call time (tests point it elsewhere): LOG_DIR / "errors.jsonl"
+MESSAGE_CHARS = 160
+
+
+def errors_file():
+    from src.config import LOG_DIR
+
+    return ERRORS_FILE or LOG_DIR / "errors.jsonl"
+
+
+def error_record(page: str, exc: BaseException) -> dict:
+    """What gets stored: the page, a short error type and a short, masked message. Never the question text
+    or a traceback (those stay in the owner-only stdout logs)."""
+    from src.usage import now_iso
+
+    message = " ".join(mask_secrets(str(exc)).split())[:MESSAGE_CHARS]
+    return {"time": now_iso(), "page": page, "type": classify(exc), "error": type(exc).__name__, "message": message}
+
+
+def record_error(page: str, exc: BaseException, path=None) -> dict:
+    """Append to the bounded, git-ignored error log and to stdout. Never raises."""
+    from src.usage import append_jsonl
+
+    record = error_record(page, exc)
+    append_jsonl(path or errors_file(), record)
+    logging.getLogger("hotel_ops.errors").error("error %s", record)
+    return record
+
+
+def is_control_flow(exc: BaseException) -> bool:
+    """Streamlit's st.rerun / st.stop / page switches raise these; an error boundary must let them through."""
+    return type(exc).__name__ in {"RerunException", "StopException", "ScriptControlException"} or not isinstance(
+        exc, Exception
+    )
