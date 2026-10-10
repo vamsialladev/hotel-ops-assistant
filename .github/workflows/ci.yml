@@ -2,6 +2,9 @@ name: CI
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -9,17 +12,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
-      - name: Install (lightweight, no embedding model)
-        run: pip install -r requirements.txt "pytest~=9.1" "pytest-cov~=7.1" "ruff==0.16.10"
+      - name: Install (light, no PyTorch: the same install Streamlit Cloud uses)
+        run: pip install -r requirements.txt "pytest~=9.1" "pytest-cov~=7.1" "ruff==0.16.10" "pip-audit~=2.10"
       - name: Lint and format check
         run: |
           ruff check .
           ruff format --check .
+      - name: Dependency audit (fails on any known vulnerability)
+        run: pip-audit -r requirements.txt --progress-spinner off
       - name: Unit tests with coverage
         run: python -m pytest -q --cov=src --cov=eval --cov-report=term-missing --cov-fail-under=70
-      - name: Retrieval regression gate
+      - name: Retrieval, scope and escalation regression gate (keyword-only, free)
         run: |
           python -m src.ingest --bm25-only
           python -m eval.run_eval --bm25-only --min-hit 0.85 --no-report

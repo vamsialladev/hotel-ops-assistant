@@ -5,3 +5,5 @@ pytest-cov~=7.1
 ruff==0.16.10
 reportlab~=5.0
 pillow~=12.3
+pip-audit~=2.10
+playwright~=1.63  # scripts/capture_screenshots.py only
