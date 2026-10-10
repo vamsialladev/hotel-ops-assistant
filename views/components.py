@@ -17,6 +17,7 @@ from src.config import INDEX_DIR, LOG_DIR, MAX_QUESTIONS_PER_DAY, ROOT, USE_EMBE
 from src.display import esc
 from src.errors import PAGE_ERROR, is_control_flow, record_error
 from src.limits import DailyCounter
+from src.secrets_check import log_missing
 
 HERE = Path(__file__).parent
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -47,6 +48,12 @@ def daily_counter():
 def app_started() -> float:
     """Time of the first page view since the server started (cached for the life of the process)."""
     return time.time()
+
+
+@st.cache_resource(show_spinner=False)
+def startup_checks() -> list[str]:
+    """Once per server start: log each missing required secret by name (never a value)."""
+    return log_missing()
 
 
 @contextmanager

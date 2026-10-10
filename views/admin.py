@@ -23,10 +23,11 @@ from src.config import (
     admin_password,
 )
 from src.display import model_name, table_html
-from src.errors import errors_file
+from src.errors import category, errors_file
 from src.feedback import FEEDBACK_FILE
 from src.limits import today_utc
 from src.monitoring import ACTIVITY_COLUMNS, ERROR_COLUMNS, activity, alerts, filter_rows, health, recent_errors, to_csv
+from src.secrets_check import REQUIRED, secret_status
 from src.usage import USAGE_FILE, read_jsonl
 from views import components as ui
 
@@ -70,7 +71,13 @@ usage, feedback, errors = read_jsonl(USAGE_FILE), read_jsonl(FEEDBACK_FILE), rea
 today = today_utc()
 retriever = ui.retriever()
 h = health(usage, errors, today, time.time(), ui.app_started(), ui.daily_counter().used(), MAX_QUESTIONS_PER_DAY)
-warnings = alerts(h, ALERT_ERROR_RATE, ALERT_MIN_EVENTS, ALERT_DAILY_COST_USD)
+secrets = secret_status()  # "set" or "missing" only, never a value
+warnings = [
+    f"Required secret {name} is missing. Add it under Secrets on Streamlit Cloud (or .streamlit/secrets.toml "
+    "locally), then reboot the app."
+    for name in REQUIRED
+    if secrets[name] == "missing"
+] + alerts(h, ALERT_ERROR_RATE, ALERT_MIN_EVENTS, ALERT_DAILY_COST_USD)
 
 
 def money(value, digits=4):
@@ -94,14 +101,27 @@ ui.tiles(
         (money(h["cost_today"], 4), "Estimated cost today", f"Warns at ${ALERT_DAILY_COST_USD:.2f}"),
     ]
 )
+st.html(
+    '<p class="hoa-secrets"><b>Secrets</b> '
+    + " ".join(
+        f'<span class="hoa-status hoa-status-{"ok" if state == "set" else "error"}">{name}: {state}</span>'
+        for name, state in secrets.items()
+    )
+    + "</p>"
+)
 st.markdown(f"**Most recent errors** ({h['errors_today']} today, {len(errors)} in the log)")
 recent = recent_errors(errors, 20)
 if recent:
     rows = [
-        [r.get("time", "")[:19].replace("T", " "), r.get("page", ""), r.get("type", ""), r.get("message", "")]
+        [
+            r.get("time", "")[:19].replace("T", " "),
+            r.get("page", ""),
+            r.get("category") or category(r.get("type", "")),
+            r.get("message", ""),
+        ]
         for r in recent
     ]
-    st.html(table_html(["Time (UTC)", "Page", "Error type", "Message"], rows))
+    st.html(table_html(["Time (UTC)", "Page", "Likely cause", "Message"], rows))
 else:
     st.caption("No errors recorded since the last restart.")
 st.caption(

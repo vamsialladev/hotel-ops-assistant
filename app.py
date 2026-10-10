@@ -36,5 +36,6 @@ if admin_password():
 
 page = st.navigation(pages)
 ui.app_started()  # remembered once per server start, for the Admin page's uptime
+ui.startup_checks()  # logs any missing required secret by name, once per server start
 with ui.error_boundary(page.title):  # no page ever shows Streamlit's crash screen or a traceback
     page.run()

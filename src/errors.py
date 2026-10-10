@@ -19,6 +19,8 @@ def classify(exc: Exception) -> str:
         return "permission"
     if isinstance(exc, anthropic.RateLimitError):
         return "rate_limit"
+    if isinstance(exc, anthropic.NotFoundError):
+        return "model_not_found"  # the only resource the app names is the model (LLM_MODEL)
     if isinstance(exc, anthropic.APIStatusError):
         message = str(getattr(exc, "message", exc)).lower()
         if "credit balance" in message or "billing" in message:
@@ -32,6 +34,27 @@ def classify(exc: Exception) -> str:
     if "api_key" in message or "api key" in message or "authentication" in message:
         return "missing_key"
     return "unexpected"
+
+
+# What each code means for the owner, in Manage app -> Logs and on the Admin page. No secret values.
+CATEGORIES = {
+    "auth": "authentication: ANTHROPIC_API_KEY is wrong or revoked",
+    "missing_key": "authentication: ANTHROPIC_API_KEY is missing",
+    "permission": "authentication: the key can't use this model or workspace",
+    "credit_exhausted": "credit balance: add credit in the Anthropic Console",
+    "model_not_found": "model not found: check LLM_MODEL",
+    "rate_limit": "rate limit: too many requests, retry later",
+    "connection": "network: couldn't reach the Anthropic API",
+    "server_error": "Anthropic API error: usually temporary",
+}
+
+
+def category(code: str) -> str:
+    if code in CATEGORIES:
+        return CATEGORIES[code]
+    if code.startswith("api_"):
+        return f"API request rejected (HTTP {code[4:]})"
+    return "unexpected error: see the logs"
 
 
 def private_detail(exc: Exception, limit: int = 300) -> str:
@@ -63,7 +86,15 @@ def error_record(page: str, exc: BaseException) -> dict:
     from src.usage import now_iso
 
     message = " ".join(mask_secrets(str(exc)).split())[:MESSAGE_CHARS]
-    return {"time": now_iso(), "page": page, "type": classify(exc), "error": type(exc).__name__, "message": message}
+    code = classify(exc)
+    return {
+        "time": now_iso(),
+        "page": page,
+        "type": code,
+        "category": category(code),
+        "error": type(exc).__name__,
+        "message": message,
+    }
 
 
 def record_error(page: str, exc: BaseException, path=None) -> dict:

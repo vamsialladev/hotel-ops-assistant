@@ -1,4 +1,4 @@
-.PHONY: install pdfs index app test lint audit eval eval-answers demo screenshots
+.PHONY: install pdfs index app test lint audit eval eval-answers demo screenshots secrets
 
 install:        ## install dependencies
 	pip install -r requirements-dev.txt
@@ -8,6 +8,9 @@ pdfs:           ## regenerate the messy demo PDFs
 
 index:          ## build the search index
 	python -m src.ingest
+
+secrets:        ## build .streamlit/secrets.toml from .env (prints key names only)
+	python scripts/make_secrets.py
 
 app:            ## run the staff web app
 	streamlit run app.py

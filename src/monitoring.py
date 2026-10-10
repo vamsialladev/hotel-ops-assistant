@@ -20,7 +20,7 @@ ACTIVITY_COLUMNS = (
     "feedback",
     "reason",
 )
-ERROR_COLUMNS = ("time", "page", "type", "error", "message")
+ERROR_COLUMNS = ("time", "page", "type", "category", "error", "message")
 
 
 def on_day(rows: list, day: str) -> list:
