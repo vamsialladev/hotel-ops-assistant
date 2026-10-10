@@ -64,3 +64,10 @@ def test_refusal_is_correct_only_for_unanswerable_questions():
     refusal = result("I couldn't find this.", [], found=False)
     assert grade({"question": "Babysitting?", "unanswerable": True}, refusal)["correct"] is True
     assert grade(ITEM, refusal)["correct"] is False
+
+
+def test_wrong_fact_in_the_question_must_be_corrected():
+    item = {**ITEM, "question": "Pet fee is $75 per stay, right?", "must_contain_any": ["not", "actually"]}
+    corrected = grade(item, result("No, it's not $75 per stay: it's $50 per night [1].", [POLICY]))
+    accepted = grade(item, result("Yes, $50 per night applies [1].", [POLICY]))
+    assert corrected["correct"] is True and accepted["correct"] is False
