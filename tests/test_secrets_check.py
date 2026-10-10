@@ -20,7 +20,7 @@ def test_status_is_only_set_or_missing():
 
 def test_empty_blank_and_example_placeholders_count_as_missing():
     assert not is_set(None) and not is_set("") and not is_set("   ")
-    assert not is_set("your-key-here") and not is_set("YOUR-KEY") and not is_set("change-me")
+    assert not is_set("your-key-here") and not is_set("Your-Key") and not is_set("change-me")
     assert is_set("a-real-looking-value")
 
 
