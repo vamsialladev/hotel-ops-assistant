@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install (light, no PyTorch: the same install Streamlit Cloud uses)
+      - name: "Install (light, no PyTorch: the same install Streamlit Cloud uses)"
         run: pip install -r requirements.txt "pytest~=9.1" "pytest-cov~=7.1" "ruff==0.16.10" "pip-audit~=2.10"
       - name: Lint and format check
         run: |
