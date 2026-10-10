@@ -6,7 +6,7 @@ Every image here is real output from this repo. Regenerate them after changes so
 | File | Shows | How to regenerate |
 |---|---|---|
 | `eval-retrieval.png` | 54-question eval, hybrid: retrieval, scope and escalation checks | `python -m eval.run_eval > out.txt`, then `python scripts/render_terminal.py out.txt docs/images/eval-retrieval.png --command "python -m eval.run_eval" --title "hotel-ops-assistant: retrieval, scope and escalation eval (hybrid)"` |
-| `tests.png` | `pytest` with coverage: 184 passed, 96% | `python -m pytest -q --cov=src --cov=eval > out.txt`, then render as above |
+| `tests.png` | `pytest` with coverage: 205 passed, 96% | `python -m pytest -q --cov=src --cov=eval > out.txt`, then render as above |
 | `business-case.png` | Calculator scenarios, 100 properties (projection) | `python scripts/business_case.py --scenarios --properties 100 --hosting 15000 > out.txt`, then render |
 
 ## App screenshots (captured from the running app with real questions)

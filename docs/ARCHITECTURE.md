@@ -75,7 +75,8 @@ sequenceDiagram
 | Chat state | `src/chat.py` | Input validation, per-property histories, feedback reasons |
 | Limits | `src/limits.py` | Daily cap across all visitors (atomic file counter) |
 | Usage and feedback | `src/usage.py`, `src/feedback.py` | JSON Lines logs with retention; stdout logging without question text |
-| Errors | `src/errors.py` | Map API errors to one friendly message; private detail with secrets masked |
+| Errors | `src/errors.py` | Map API errors to one friendly message; private detail with secrets masked and a plain likely cause (authentication, credit, model, rate limit, network) |
+| Secrets check | `src/secrets_check.py`, `scripts/make_secrets.py` | Report each secret as set or missing (never a value), log missing ones at startup, build `.streamlit/secrets.toml` from `.env` |
 | Admin gate | `src/admin.py` | Constant-time password check, failure delay, lockout, sign out, idle auto-lock |
 | Monitoring | `src/monitoring.py` | Health, threshold warnings, activity table, filters, CSV export for the Admin page |
 | Safe file writes | `src/fileio.py` | Retries Windows file-sharing collisions so logs and the counter never crash a page |
@@ -85,7 +86,7 @@ sequenceDiagram
 | Pages | `app.py`, `views/` | Thin Streamlit pages; no logic beyond wiring |
 | CLI | `ask.py` | Quick command-line questions |
 | Evaluation | `eval/run_eval.py`, `eval/metrics.py`, `eval/questions.jsonl` | 54 questions; strict retrieval, answers, grounding, refusals, scope, escalation, latency, cost |
-| Tests | `tests/` | 184 tests, including every page rendered with `AppTest`; no API key or PyTorch needed |
+| Tests | `tests/` | 205 tests, including every page rendered with `AppTest`; no API key or PyTorch needed |
 
 ## Deployment modes
 | | Streamlit Community Cloud (live demo) | Docker (local or always-on host) |

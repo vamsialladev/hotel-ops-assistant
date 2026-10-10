@@ -237,7 +237,7 @@ Every finding is in [DECISIONS.md](docs/DECISIONS.md) with its context, decision
 | Measuring quality, not guessing | [Eval harness](eval/), [Results](#results), raw answers saved per run |
 | Debugging with evidence | [DECISIONS.md](docs/DECISIONS.md) 13–39: grader bugs, the $75 root cause, the Streamlit startup hang, an uninstallable pin, a Windows file race reproduced with two processes |
 | Shipping a product people can use | Multi-page app, streaming, light/dark, phone layout, white-label branding |
-| Production engineering habits | 184 tests, CI with audit and coverage gates, Docker, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
+| Production engineering habits | 205 tests, CI with audit and coverage gates, Docker, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
 | Translating tech into business value | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md), the Insights page for managers |
 
 ## Project structure
@@ -256,15 +256,16 @@ hotel-ops-assistant/
 │   ├── scope.py · escalation.py · grounding.py · gaps.py
 │   ├── chat.py · limits.py · usage.py · feedback.py · errors.py · admin.py · fileio.py
 │   ├── monitoring.py       # Health, warnings, activity table and CSV export for the Admin page
+│   ├── secrets_check.py    # Secrets set/missing (never values), startup check, secrets.toml builder
 │   └── display.py · branding.py · library.py · activity.py · reports.py
 ├── branding.toml           # White-label: product name, colors, properties, sample questions
 ├── assets/                 # Logo and favicon
 ├── data/raw/               # Hotel documents, one folder per property + shared/
 ├── eval/                   # Labeled questions, metrics, runner, saved reports
 ├── tests/                  # Unit tests
-├── scripts/                # Business case, demo PDFs, screenshots, terminal image renderer
+├── scripts/                # Business case, secrets.toml builder, demo PDFs, screenshots, terminal images
 ├── docs/                   # Architecture, decisions, business case, demo script, log, images
-├── .streamlit/config.toml  # Theme (light + dark), toolbar, file watcher
+├── .streamlit/             # config.toml (theme, toolbar, file watcher) · secrets.toml.example
 ├── .github/                # CI, Dependabot, PR template
 ├── .devcontainer/          # GitHub Codespaces setup (Python 3.12)
 ├── Dockerfile · Makefile · pyproject.toml · requirements*.txt
@@ -311,7 +312,16 @@ docker run -p 8501:8501 --env-file .env hotel-ops-assistant
 
 ## Configuration
 
-All settings live in `.env` (copy it from `.env.example`). On Streamlit Cloud, add the same names under **Secrets**.
+All settings live in `.env` (copy it from `.env.example`). On Streamlit Cloud they come from the app's **Secrets** (see [Secrets](#secrets-one-file-to-paste)).
+
+When the app runs (`streamlit run`, `run_app.ps1`), each setting is read in this order, first one wins:
+
+1. `.streamlit/secrets.toml` (Streamlit copies its top-level values into the environment at startup; on Streamlit Cloud, the app's Secrets)
+2. Environment variables already set (e.g. `docker run -e`)
+3. `.env`
+4. The defaults below
+
+The command-line tools (`ask.py`, the eval) read only the environment and `.env`. Docker never sees `secrets.toml` (it's in `.dockerignore`).
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -360,6 +370,7 @@ un_app.ps1` | |
 | Design-review screenshots, light/dark/phone | `python scripts/capture_review.py --phone` | |
 | Render command output as a terminal image | `python scripts/render_terminal.py out.txt image.png --command "..." --title "..."` | |
 | Regenerate demo PDFs | `python scripts/make_demo_pdfs.py` | `make pdfs` |
+| Build `.streamlit/secrets.toml` from `.env` (prints key names only) | `python scripts/make_secrets.py` | `make secrets` |
 | Build / run Docker image | `docker build -t hotel-ops-assistant .` / `docker run -p 8501:8501 --env-file .env hotel-ops-assistant` | |
 
 ## Troubleshooting
@@ -369,13 +380,15 @@ un_app.ps1` | |
 | `No index found` | Run `python -m src.ingest` (the app also builds it on first start) |
 | `No module named src` | Run commands from the project root folder |
 | `No matching distribution found for numpy~=2.5` | Use Python 3.12 (NumPy 2.5 doesn't support 3.11) |
-| "The demo is temporarily unavailable" | Check `ANTHROPIC_API_KEY` (no quotes or spaces) and your credit balance; the real error is in the logs and on the Admin page |
+| "The demo is temporarily unavailable" | The Admin page's **Most recent errors** shows the likely cause (authentication, credit balance, model not found, rate limit, network), and Manage app → Logs has the same line. Most often: a missing or wrong `ANTHROPIC_API_KEY` in Secrets, or no credit left |
 | Page stuck on "Starting up the assistant" for minutes | The first start downloads the embedding model. Keep `.streamlit/config.toml` (it stops Streamlit watching `.venv`), and use `run_app.ps1`, which also turns the watcher off for a faster local start |
 | Windows: "running scripts is disabled" | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
 | PyTorch fails to install | Use Python 3.12, or run keyword-only with `requirements.txt` |
 | Answer uses an old policy | Mark the old file `status: superseded` and rebuild the index |
 | A new document isn't found | Rebuild the index after adding or editing documents |
-| No Admin page | Set `ADMIN_PASSWORD`, then open `/admin` (live: https://hotel-ops-assistant.streamlit.app/admin) |
+| No Admin page | `ADMIN_PASSWORD` isn't reaching the app. Set it, with the value in double quotes and at the top of Secrets (not under a `[section]`), reboot, then open `/admin` (live: https://hotel-ops-assistant.streamlit.app/admin) |
+| Local app runs keyword-only although `.env` says `USE_EMBEDDINGS=true` | `.streamlit/secrets.toml` wins over `.env` and mirrors the cloud (`"false"`). Use Docker for hybrid, or change it to `"true"` in your local copy |
+| Startup log says `Missing required secret: ...` | Add that key to Secrets (or `secrets.toml` / `.env` locally) and reboot. Logs name the key, never a value |
 | `run_app.ps1` says there's no `.venv` or `.env` | Do the first setup above once; the message shows the exact commands |
 
 ## Deploy
@@ -383,17 +396,26 @@ un_app.ps1` | |
 ### Free: Streamlit Community Cloud (keyword-only search)
 1. Push the repo to GitHub (public).
 2. Go to [share.streamlit.io](https://share.streamlit.io), sign in with GitHub, click **Create app**, choose this repo, branch `main`, main file `app.py`.
-3. Under **Advanced settings**, pick **Python 3.12** and add these secrets:
-   ```toml
-   ANTHROPIC_API_KEY = "your-key"
-   ADMIN_PASSWORD = "a-long-random-password"
-   PRICE_IN_PER_M = "0.10"
-   PRICE_OUT_PER_M = "0.50"
-   MAX_QUESTIONS_PER_SESSION = "20"
-   MAX_QUESTIONS_PER_DAY = "200"
-   USE_EMBEDDINGS = "false"
-   ```
+3. Under **Advanced settings**, pick **Python 3.12** and paste your secrets (next section).
 4. Click **Deploy**. The first start builds the search index automatically.
+
+### Secrets: one file to paste
+
+All the cloud settings live in one file, `.streamlit/secrets.toml`, built from your `.env`. It is git- and docker-ignored and never committed; [`.streamlit/secrets.toml.example`](.streamlit/secrets.toml.example) shows the same keys with placeholder values.
+
+```powershell
+python scripts/make_secrets.py   # writes .streamlit/secrets.toml; prints only "set" or "missing" per key
+```
+
+Then copy it into Streamlit Cloud:
+
+1. Open the file in an editor and copy everything (Ctrl+A, Ctrl+C). Don't paste it anywhere else.
+2. [share.streamlit.io](https://share.streamlit.io) → your app's **⋮** menu → **Settings** → **Secrets**.
+3. Paste, replacing what's there → **Save**.
+4. **Manage app** → **⋮** → **Reboot**.
+5. Open https://hotel-ops-assistant.streamlit.app/admin: the Health section should show every secret as **set**.
+
+Repeat only when a secret changes. Every key sits at the top level (no `[sections]`) and every value is in double quotes: Streamlit only copies top-level text and numbers into the environment, so an unquoted `USE_EMBEDDINGS = false` would be silently ignored.
 
 The live demo runs at **https://hotel-ops-assistant.streamlit.app**, open to everyone as a guest (no sign-in). **Every push to `main` redeploys it automatically** on Streamlit Cloud and runs CI on GitHub, so there's no manual deployment step.
 
@@ -415,7 +437,7 @@ Three places to check, from most to least specific:
 
 | Where | What it shows | How to open it |
 |---|---|---|
-| **Admin page** (this app) | Health (status, model, retrieval mode, uptime), questions today vs the daily cap, estimated cost today, the most recent errors, warnings when the error rate or cost crosses a threshold, a filterable activity table with 👍 / 👎, and CSV downloads of the usage, feedback and error logs | https://hotel-ops-assistant.streamlit.app/admin with your `ADMIN_PASSWORD` |
+| **Admin page** (this app) | Health (status, model, retrieval mode, uptime, each secret shown as set or missing), questions today vs the daily cap, estimated cost today, the most recent errors with their likely cause, warnings when the error rate or cost crosses a threshold, a filterable activity table with 👍 / 👎, and CSV downloads of the usage, feedback and error logs | https://hotel-ops-assistant.streamlit.app/admin with your `ADMIN_PASSWORD` |
 | **Streamlit's "Manage app" logs** | Server output: one line per question (no question text), errors with tracebacks, startup messages | Bottom-right of the live app → **Manage app**, or [share.streamlit.io](https://share.streamlit.io) |
 | **Anthropic Console usage page** | The real API usage and bill (the Admin page only estimates cost) | [console.anthropic.com](https://console.anthropic.com) → Usage |
 
@@ -424,7 +446,7 @@ Streamlit Cloud keeps logs, the error list and the daily counter only until the 
 ## Testing and quality
 
 ```bash
-python -m pytest -q --cov=src --cov=eval   # 184 unit tests, 96% coverage
+python -m pytest -q --cov=src --cov=eval   # 205 unit tests, 96.5% coverage
 python -m eval.run_eval                    # retrieval, scope and escalation eval (free)
 python -m eval.run_eval --answers --runs 3 --price-in 0.10 --price-out 0.50
 ruff check . && ruff format --check .      # lint and format
@@ -432,9 +454,9 @@ pip-audit -r requirements.txt              # known vulnerabilities
 ```
 
 <details>
-<summary>Test run: 184 passed, 96% coverage</summary>
+<summary>Test run: 205 passed, 96.5% coverage</summary>
 <br>
-<img src="docs/images/tests.png" alt="pytest output: 184 tests passed with 96.36% coverage" width="700">
+<img src="docs/images/tests.png" alt="pytest output: 205 tests passed with 96.51% coverage" width="700">
 </details>
 
 CI runs on the light install (no PyTorch): lint, format check, `pip-audit`, tests with a 70% minimum coverage, and a keyword-only retrieval regression gate (fails below 85%). Dependabot opens weekly update pull requests. Before release, a scripted Playwright QA pass clicked through every public page in light and dark mode at laptop and phone width (251 checks: links, text, limits, errors, admin lockout, console errors).
@@ -459,7 +481,7 @@ Only synthetic policy documents are indexed; no guest or payment data. Each ques
 |---|---|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System and request-flow diagrams, components, scaling path |
 | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md) | Value model, assumptions, policy gaps, pilot plan, KPIs, risks |
-| [DECISIONS.md](docs/DECISIONS.md) | 39 decisions with context, decision, tradeoff and result |
+| [DECISIONS.md](docs/DECISIONS.md) | 41 decisions with context, decision, tradeoff and result |
 | [ENGINEERING_LOG.md](docs/ENGINEERING_LOG.md) | What broke and how it was fixed, in my own words |
 | [DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Word-for-word 2-minute walkthrough |
 | [VALIDATION_CHECKLIST.md](docs/VALIDATION_CHECKLIST.md) | Steps that need a person: measured baseline, held-out questions |

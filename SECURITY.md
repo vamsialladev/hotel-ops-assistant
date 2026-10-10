@@ -38,7 +38,7 @@ per-property access is planned for Project 4.
 
 | Threat | Impact | Mitigation | Status |
 |---|---|---|---|
-| API key leak | Someone spends the owner's credit | Key only in `.env` / Streamlit secrets; git- and docker-ignored; pre-commit key check; GitHub secret scanning + push protection; key masked in error logs | Mitigated |
+| API key leak | Someone spends the owner's credit | Key only in `.env`, `.streamlit/secrets.toml` (generated, never printed) or Streamlit secrets; both files git- and docker-ignored; startup check and Admin page report only "set" or "missing"; pre-commit key check; GitHub secret scanning + push protection; key masked in error logs | Mitigated |
 | Cost abuse by visitors | API bill grows | 20 questions per session, 200 per day across all visitors (server-side, survives refresh), 500-character limit, off-topic questions refused before the API, `max_tokens` cap; owner sets a spending limit in the Anthropic Console | Mitigated; the daily count resets if the cloud app restarts |
 | Prompt injection in documents or questions | Wrong or harmful instructions followed (e.g. "waive all fees") | System prompt treats sources as data; a planted injection is in the eval and checked by hand every run; answers can't take actions | Partly mitigated: prompt rules reduce, not eliminate, the risk |
 | XSS through answers, documents or questions | Script runs in a visitor's browser | All model output, document text and user input is HTML-escaped (and `$` escaped) before display; `unsafe_allow_html` only for static styling and a static diagram; unit tests with `<script>` input | Mitigated |

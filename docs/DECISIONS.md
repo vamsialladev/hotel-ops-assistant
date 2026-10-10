@@ -239,3 +239,24 @@ Read by hand: Haiku 5.5's only miss besides the Spanish question is a grader fal
 **Decision:** `.streamlit/config.toml` keeps the watcher on with `folderWatchBlacklist` excluding `.venv`, `venv`, `data`, `docs`, `eval/reports` and `.git`. Local runs and Docker pass `--server.fileWatcherType none`, because they never need reload-on-push.
 **Result:** Measured on this machine with hybrid search: first page in 92s with the watcher on and `.venv` excluded (it never finished in 5+ minutes before), and 36s with the watcher off. Streamlit Cloud (keyword-only, no PyTorch) can reload on push again; the running cloud app needed one manual reboot to pick up the new config.
 **Tradeoff:** A plain `streamlit run app.py` with hybrid search starts about a minute slower than `run_app.ps1`.
+
+## 40. Secrets come from one generated file, checked at startup and shown as "set" or "missing"
+**Context:** After 1.3.1 went live, every question returned "The demo is temporarily unavailable" and `/admin` didn't exist. The Admin page is registered only when `ADMIN_PASSWORD` is set, so neither secret was reaching the app's environment. The code can't see Streamlit Cloud's Secrets settings, so the exact mistake is unconfirmed. Likely causes: a missing key, or keys nested under a `[section]`. A third is an unquoted value, since Streamlit copies only top-level text and numbers into the environment and silently skips booleans and tables. Settings were also typed by hand from a README snippet that listed only 7 of the 16 settings.
+**Decision:** `python scripts/make_secrets.py` builds `.streamlit/secrets.toml` from `.env`:
+- It writes all 16 settings at the top level, every value double-quoted, with `USE_EMBEDDINGS` forced to `"false"`.
+- It checks the TOML round-trips and refuses to run unless the file is git-ignored.
+- It prints only "set" or "missing" per key.
+
+The owner pastes that one file into Streamlit Cloud. Supporting changes:
+- `.streamlit/secrets.toml.example` with placeholders is committed.
+- At startup the app logs `Missing required secret: <NAME>` for `ANTHROPIC_API_KEY` or `ADMIN_PASSWORD`, naming the key only.
+- The Admin page shows each secret as set or missing.
+
+The precedence (`secrets.toml` > environment > `.env` > defaults) is Streamlit's own behavior, now documented rather than reimplemented.
+**Tradeoff:** With `secrets.toml` present, a local `streamlit run` is keyword-only like the live demo, because the file wins over `.env`. Hybrid stays available through Docker, or by editing the local copy. Placeholder-looking values (`your-...`) count as missing.
+**Result:** Locally, the app read `USE_EMBEDDINGS="false"` from the generated file (How it works showed keyword-only), and the script reported all 4 checked keys as set. Unit tests use fake values only. The live result depends on the owner pasting the file and rebooting.
+
+## 41. API failures are logged with a plain "likely cause"
+**Context:** The private log and Admin error list showed short codes such as `auth` or `api_404`. A missing model ID, the easiest mistake to make in `LLM_MODEL`, appeared as a bare HTTP code.
+**Decision:** `NotFoundError` is classified as `model_not_found`. Every code maps to a plain category: authentication, credit balance, model not found, rate limit, network, Anthropic API error or unexpected. The category is stored with each error, written to the stdout log line (Manage app → Logs) and shown as "Likely cause" on the Admin page. Messages are still masked for anything that looks like a key.
+**Result:** Covered by unit tests with fake values. The configured `claude-haiku-5-5` was confirmed with the Models API (display name "Claude Haiku 5.5"), and it's the model the final 1.3.0 evals used (`eval/reports/2026-10-09_2143_hybrid_answers_claude-haiku-5-5.md` and `..._2146_bm25_...`).

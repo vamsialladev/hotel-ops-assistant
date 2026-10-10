@@ -2,6 +2,23 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.3.2] - 2026-10-10
+### Added
+- `python scripts/make_secrets.py` (`make secrets`) builds `.streamlit/secrets.toml` from `.env`: every
+  setting at the top level and double-quoted, ready to paste into Streamlit Cloud. It prints only "set" or
+  "missing". `.streamlit/secrets.toml.example` shows the keys with placeholders.
+- Startup check: a missing `ANTHROPIC_API_KEY` or `ADMIN_PASSWORD` is logged by name, never by value.
+- Admin page: each secret shown as set or missing; recent errors show a plain "likely cause".
+- A line under the chat input: "Answers are written live by AI using only the documents in the Document
+  library", linking to that page.
+- README: a "Secrets" section (copy, paste, save, reboot) and the order settings are read in.
+- Tests for the secrets check, the secrets file, error categories, the new line and the Admin secrets status
+  (205 tests, 96% coverage).
+
+### Changed
+- API errors are classified with a model-not-found category and logged with their likely cause
+  (authentication, credit balance, model not found, rate limit, network).
+
 ## [1.3.1] - 2026-10-10
 ### Added
 - **Owner monitoring on the Admin page:** health and recent errors, warnings when the error rate or estimated
