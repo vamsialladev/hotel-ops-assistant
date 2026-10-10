@@ -51,6 +51,7 @@ h1, h2, h3 { letter-spacing: -0.01em; }
   border-radius: 999px; padding: .1rem .6rem; margin-bottom: .35rem; }
 .hoa-status-ok { background: var(--hoa-ok-bg); color: var(--hoa-ok-ink); }
 .hoa-status-warn { background: var(--hoa-warn-bg); color: var(--hoa-warn-ink); }
+.hoa-secrets { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: .25rem 0 .75rem; }
 .hoa-status-error { background: var(--hoa-err-bg); color: var(--hoa-err-ink); }
 
 /* Manager note */
@@ -123,4 +124,7 @@ h1, h2, h3 { letter-spacing: -0.01em; }
 /* Keep the chat input exactly as wide as the content column above it */
 [data-testid="stBottomBlockContainer"] { max-width: 980px; padding-left: 5rem; padding-right: 5rem; }
 @media (max-width: 640px) { [data-testid="stBottomBlockContainer"] { padding-left: 1rem; padding-right: 1rem; } }
+/* One line under the chat input saying where answers come from */
+.hoa-input-note { margin: .1rem 0 0; text-align: center; font-size: .78rem; color: var(--hoa-muted); }
+.hoa-input-note a { color: var(--hoa-green); font-weight: 600; text-underline-offset: 3px; }
 .hoa-links a { color: var(--hoa-green); text-underline-offset: 3px; }

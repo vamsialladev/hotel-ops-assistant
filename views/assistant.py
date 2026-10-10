@@ -8,7 +8,7 @@ from src import service
 from src.chat import FEEDBACK_REASONS, Turn, remaining, validate_question
 from src.config import MAX_QUESTION_CHARS, MAX_QUESTIONS_PER_SESSION
 from src.display import esc, quote_markdown, safe_markdown, scope_label, source_chip_html, source_label
-from src.errors import UNAVAILABLE, classify, private_detail, record_error
+from src.errors import UNAVAILABLE, category, classify, private_detail, record_error
 from src.escalation import RULES_BY_ID
 from src.feedback import log_feedback
 from src.generate import AnswerStream
@@ -173,7 +173,7 @@ def handle(raw: str, prop: str):
             except Exception as exc:  # never show raw errors to visitors
                 waiting.empty()
                 code = classify(exc)
-                log.error("answer failed: %s %s", code, private_detail(exc))
+                log.error("answer failed: %s (%s) %s", code, category(code), private_detail(exc))
                 record_error("Assistant", exc)
                 turn.error = UNAVAILABLE
                 log_usage(
@@ -225,7 +225,12 @@ if message := st.session_state.pop("toast", None):
 if st.session_state.pop("callback_error", False):
     st.warning(PAGE_ERROR_SHORT, icon=":material/error:")
 
-typed = st.chat_input(PLACEHOLDER, max_chars=2000)
+with st.bottom:  # pinned to the bottom of the page, under the chat input
+    typed = st.chat_input(PLACEHOLDER, max_chars=2000)
+    st.html(
+        '<p class="hoa-input-note">Answers are written live by AI using only the documents in the '
+        '<a href="library" target="_self">Document library</a>.</p>'
+    )
 incoming = typed or st.session_state.pop("pending", None)
 
 history = chat.history(prop)

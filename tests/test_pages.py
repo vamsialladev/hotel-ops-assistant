@@ -4,7 +4,10 @@
 - an unexpected exception on any page shows the friendly message, never Streamlit's crash screen or a
   traceback, and is recorded for the owner
 - "New conversation" is disabled when empty, enabled with a message, and clearing shows a toast
+- the note under the chat input links to the Document library; Admin shows missing secrets by name only
 """
+
+import time
 
 import pytest
 from streamlit.testing.v1 import AppTest
@@ -12,6 +15,7 @@ from streamlit.testing.v1 import AppTest
 import src.errors as errors
 import src.feedback as feedback
 import src.usage as usage
+from src.admin import GateState
 from src.chat import ChatState, Turn
 from src.config import ROOT
 from src.errors import PAGE_ERROR
@@ -89,3 +93,29 @@ def test_new_conversation_button_state_and_toast(app):
     assert [t.value for t in at.toast] == ["Started a new conversation"]
     assert at.sidebar.button(key="new_conversation").disabled
     assert not at.session_state["chat"].has_messages("beach-resort")
+
+
+def html_text(at) -> str:
+    return " ".join(str(e.proto.body) for e in at.get("html"))
+
+
+def test_note_under_the_chat_input_links_to_the_document_library(app):
+    at, _ = app
+    at.run()
+    text = html_text(at)
+    assert "Answers are written live by AI using only the documents in the" in text
+    assert '<a href="library" target="_self">Document library</a>' in text
+
+
+def test_admin_health_shows_missing_secrets_by_name_only(app, monkeypatch):
+    at, _ = app
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("PRICE_IN_PER_M", "0.10")
+    at.run()
+    at.session_state["admin_gate"] = GateState(unlocked=True, last_active=time.time())
+    at.switch_page("views/admin.py").run()
+    assert not at.exception
+    text = html_text(at)
+    assert "ANTHROPIC_API_KEY: missing" in text and "ADMIN_PASSWORD: set" in text
+    assert any("Required secret ANTHROPIC_API_KEY is missing" in w.value for w in at.warning)
+    assert "test-only-password" not in text + " ".join(w.value for w in at.warning)
