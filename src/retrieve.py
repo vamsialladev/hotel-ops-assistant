@@ -33,7 +33,12 @@ def stem(word: str) -> str:
 
 
 def tokenize(text: str):
-    return [stem(t) for t in re.findall(r"[a-z0-9$:]+", text.lower()) if t not in STOPWORDS]
+    # Single letters ("s" from "guest's", "a") carry no meaning but matched almost every passage.
+    return [
+        stem(t)
+        for t in re.findall(r"[a-z0-9$:]+", text.lower())
+        if t not in STOPWORDS and not (len(t) == 1 and t.isalpha())
+    ]
 
 
 class Retriever:
@@ -55,6 +60,21 @@ class Retriever:
 
     def properties(self):
         return sorted({c["property"] for c in self.chunks} - {SHARED})
+
+    @property
+    def mode(self) -> str:
+        return "hybrid" if self.model is not None else "keyword"
+
+    def signals(self, query: str, prop: str) -> dict:
+        """How well the question matches this property's documents, used by the scope check:
+        number of passages sharing a keyword, and (hybrid only) the best meaning similarity."""
+        allowed = [i for i, c in enumerate(self.chunks) if c["property"] in (prop, SHARED)]
+        scores = self.bm25.get_scores(tokenize(query))
+        best = None
+        if self.model is not None:
+            q = self.model.encode([query], normalize_embeddings=True)[0]
+            best = float(max(self.vectors[i] @ q for i in allowed))
+        return {"keyword_matches": sum(1 for i in allowed if scores[i] > 0), "best_similarity": best}
 
     def search(self, query: str, prop: str, k: int = TOP_K):
         allowed = [i for i, c in enumerate(self.chunks) if c["property"] in (prop, SHARED)]
