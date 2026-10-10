@@ -53,7 +53,9 @@ def main():
     p.add_argument("--wage", type=float, default=20, help="front-desk cost per hour, USD")
     p.add_argument("--wrong-per-week", type=float, default=1, help="wrong answers causing a refund, per property")
     p.add_argument("--comp-cost", type=float, default=75, help="average refund or comp, USD")
-    p.add_argument("--cost-per-question", type=float, default=0.003, help="AI cost per question, USD")
+    p.add_argument(
+        "--cost-per-question", type=float, default=0.0002, help="AI cost per question, USD (measured: $0.00016-0.00018)"
+    )
     p.add_argument("--hosting", type=float, default=240, help="hosting per year, USD")
     p.add_argument("--scenarios", action="store_true", help="show pessimistic, base and optimistic cases")
     a = p.parse_args()
