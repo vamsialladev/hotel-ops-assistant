@@ -137,10 +137,23 @@ if pair:
         ]
     ]
     st.html(table_html(["", "Claude Haiku 4.5", "Claude Haiku 5.5 (shipped)"], rows))
+    acc_old, acc_new = old["answer_accuracy"], new["answer_accuracy"]
+    overlap = (
+        acc_old["min"] <= acc_new["max"] and acc_new["min"] <= acc_old["max"]
+    )  # run-to-run ranges overlap: no real difference
+    quality = (
+        "Quality is within the run-to-run range of each other"
+        if overlap
+        else f"Haiku {'5.5' if acc_new['pct'] > acc_old['pct'] else '4.5'} answers more questions correctly"
+    )
+    ratio = old["cost_per_1000"] / new["cost_per_1000"] if new.get("cost_per_1000") else None
     st.caption(
         f"Same {old['retrieval']['n']}-question eval and settings for both, hybrid retrieval, "
-        f"{old.get('runs', 1)} runs each. Quality is equal or slightly better with 5.5 (a difference of about one "
-        "question), at about a fifth of the cost and a little more latency."
+        f"{old.get('runs', 1)} runs each (answer accuracy {acc_old['min']}–{acc_old['max']}% vs "
+        f"{acc_new['min']}–{acc_new['max']}%). "
+        f"{quality}. Haiku 4.5 answers faster but costs about {ratio:.0f}× as much per question, so 5.5 is shipped."
+        if ratio
+        else f"{quality}."
     )
 
 st.subheader("Helping users ask")
