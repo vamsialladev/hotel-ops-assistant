@@ -1,4 +1,4 @@
-"""Owner monitoring for the Admin page: health, threshold warnings, the activity table and CSV export.
+"""Owner monitoring for the Admin page: health, threshold warnings, recent errors and CSV export.
 
 Pure functions over the usage, feedback and error logs, so they're unit-tested without Streamlit.
 """
@@ -6,22 +6,6 @@ Pure functions over the usage, feedback and error logs, so they're unit-tested w
 import csv
 import io
 
-ACTIVITY_COLUMNS = (
-    "time",
-    "property",
-    "source",
-    "kind",
-    "model",
-    "tokens_in",
-    "tokens_out",
-    "cost_usd",
-    "total_s",
-    "refused",
-    "grounding_flag",
-    "error",
-    "feedback",
-    "reason",
-)
 ERROR_COLUMNS = ("time", "page", "type", "category", "error", "message")
 
 
@@ -82,34 +66,6 @@ def alerts(h: dict, error_rate: float, min_events: int, daily_cost: float) -> li
 
 def recent_errors(error_rows: list, n: int = 20) -> list:
     return list(reversed(error_rows[-n:]))
-
-
-def activity(usage_rows: list, feedback_rows: list) -> list[dict]:
-    """Usage log entries, newest first, with the 👍 / 👎 and reason given for that answer (joined on turn_id)."""
-    rating = {f["turn_id"]: f for f in feedback_rows if f.get("turn_id")}
-    rows = []
-    for r in reversed(usage_rows):
-        f = rating.get(r.get("turn_id"))
-        rows.append(
-            {
-                **{c: r.get(c) for c in ACTIVITY_COLUMNS if c not in ("feedback", "reason")},
-                "source": r.get("source") or "typed",  # older rows predate question sources
-                "feedback": None if f is None else ("👍" if f.get("helpful") else "👎"),
-                "reason": None if f is None else f.get("reason"),
-            }
-        )
-    return rows
-
-
-def filter_rows(rows: list, day: str | None = None, prop: str | None = None, errors_only: bool = False) -> list:
-    out = rows
-    if day:
-        out = [r for r in out if str(r.get("time", "")).startswith(day)]
-    if prop:
-        out = [r for r in out if r.get("property") == prop]
-    if errors_only:
-        out = [r for r in out if r.get("error")]
-    return out
 
 
 def csv_safe(value) -> str:

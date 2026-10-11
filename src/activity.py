@@ -92,5 +92,4 @@ def admin_stats(usage_rows: list, feedback_rows: list, today: str) -> dict:
         "reasons": Counter(
             r["reason"] for r in feedback_rows if not r.get("helpful") and r.get("reason")
         ).most_common(),
-        "recent": list(reversed(usage_rows[-20:])),
     }

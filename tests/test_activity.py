@@ -90,7 +90,6 @@ def test_admin_stats():
     assert round(s["cost_usd"], 4) == 0.0005
     assert s["grounding_flags"] == 1 and s["errors"] == [("rate_limit", 1)]
     assert s["p95_total_s"] == 2.0 and round(s["avg_total_s"], 2) == 1.47
-    assert s["recent"][0]["error"] == "rate_limit"
 
 
 def test_percentile_ignores_missing_values():

@@ -4,6 +4,7 @@ The gate is simple demo protection, not real authentication (SECURITY.md). Logic
 src/activity.py and src/monitoring.py.
 """
 
+import json
 import time
 from datetime import date
 
@@ -11,7 +12,6 @@ import streamlit as st
 
 from src.activity import admin_stats
 from src.admin import FAILURE_DELAY_SECONDS, GateState, attempt, sign_out, still_signed_in
-from src.chat import SOURCES
 from src.config import (
     ADMIN_IDLE_MINUTES,
     ALERT_DAILY_COST_USD,
@@ -23,24 +23,36 @@ from src.config import (
     PRICE_OUT_PER_M,
     admin_password,
 )
-from src.display import model_name, table_html
+from src.display import esc, model_name, safe_markdown, table_html
 from src.errors import category, errors_file
 from src.feedback import FEEDBACK_FILE
+from src.library import readable_name
 from src.limits import today_utc
 from src.monitoring import (
-    ACTIVITY_COLUMNS,
     ERROR_COLUMNS,
-    activity,
     alerts,
-    filter_rows,
     first_question_success,
     health,
     recent_errors,
     to_csv,
 )
 from src.reports import latest_visitor
+from src.requestlog import (
+    NOT_RECORDED,
+    RESULTS,
+    details,
+    filter_requests,
+    find,
+    list_rows,
+    log_since,
+    request_json,
+    selected_id,
+    short_time,
+    table_key,
+    to_jsonl,
+)
 from src.secrets_check import REQUIRED, secret_status
-from src.usage import USAGE_FILE, read_jsonl
+from src.usage import USAGE_FILE, read_jsonl, redact
 from views import components as ui
 
 IDLE_SECONDS = ADMIN_IDLE_MINUTES * 60
@@ -161,6 +173,28 @@ st.caption(
 # ---------- Usage summary ----------
 s = admin_stats(usage, feedback, today=today)
 st.subheader("Usage")
+since = log_since(usage)
+st.caption(
+    f"Log since {since + ' UTC' if since else 'no entries yet'} · Logs reset when the app restarts. "
+    "Download a copy to keep it."
+)
+k1, k2 = st.columns(2)
+k1.download_button(
+    "Download usage log (JSONL)",
+    to_jsonl(usage),
+    f"usage-{today}.jsonl",
+    "application/jsonl",
+    icon=":material/download:",
+    on_click="ignore",
+)
+k2.download_button(
+    "Download feedback log (JSONL)",
+    to_jsonl(feedback),
+    f"feedback-{today}.jsonl",
+    "application/jsonl",
+    icon=":material/download:",
+    on_click="ignore",
+)
 ui.tiles(
     [
         (str(s["questions_total"]), "Questions in the log", f"{s['blocked_before_api']} answered without the API"),
@@ -177,77 +211,225 @@ ui.tiles(
     ]
 )
 
-# ---------- Recent activity ----------
-st.subheader("Recent activity")
-props = sorted({r.get("property") for r in usage if r.get("property")})
-c1, c2, c3 = st.columns([1.2, 1.2, 1])
-pick_day = c1.date_input("Date (UTC)", value=None, max_value=date.today(), help="Leave empty for all dates")
-pick_prop = c2.selectbox("Property", ["All properties", *props])
-errors_only = c3.checkbox("Errors only")
-table = filter_rows(
-    activity(usage, feedback),
-    day=pick_day.isoformat() if pick_day else None,
-    prop=None if pick_prop == "All properties" else pick_prop,
-    errors_only=errors_only,
+
+# ---------- Requests: list, filters, details ----------
+def nr(value, fmt=None) -> str:
+    """A value for display, or "not recorded" when the record doesn't have it."""
+    return NOT_RECORDED if value is None else (fmt(value) if fmt else str(value))
+
+
+def citation_badges(citations: list) -> str:
+    chips = "".join(
+        '<span class="hoa-chip">'
+        f'<span class="hoa-chip-n">{esc(c.get("n") or "")}</span>'
+        f'<span class="hoa-chip-label">{esc(readable_name(c.get("source") or "") or NOT_RECORDED)}</span>'
+        f'<span class="hoa-chip-meta">{esc(c.get("section") or "")}</span>'
+        "</span>"
+        for c in citations
+    )
+    return f'<div class="hoa-chips">{chips}</div>'
+
+
+def fields_table(pairs: list) -> str:
+    return table_html(["Field", "Value"], [[k, v] for k, v in pairs])
+
+
+@st.dialog("Request details", width="large")
+def request_dialog(record: dict, feedback_rows: list):
+    d = details(record, feedback_rows)
+    tabs = st.tabs(["Summary", "Answer", "Sources", "Performance", "Checks", "Feedback", "Raw"])
+    with tabs[0]:
+        st.markdown("**Question**")
+        st.text(d["question"])
+        st.html(
+            fields_table(
+                [
+                    ("Result", d["result"]),
+                    ("Property", d["property"]),
+                    ("Time (UTC)", d["time"]),
+                    ("Session", d["session_id"]),
+                    ("Log schema", f"v{d['schema_version']}"),
+                ]
+            )
+        )
+        st.caption("Request ID (copy icon on the right)")
+        st.code(d["id"], language=None)
+    with tabs[1]:
+        if d["answer"] is None:
+            missing = NOT_RECORDED if d["schema_version"] < 2 else "no answer (see Checks)"
+            st.caption(f"Answer: {d['error_message'] or missing}")
+        else:
+            st.markdown(safe_markdown(d["answer"]))
+        if d["citations"] is None:
+            st.caption(f"Citations: {NOT_RECORDED}")
+        elif d["citations"]:
+            st.html(citation_badges(d["citations"]))
+        else:
+            st.caption("No citations.")
+    with tabs[2]:
+        if d["passages"] is None:
+            st.caption(f"Retrieved passages: {NOT_RECORDED}")
+        elif not d["passages"]:
+            st.caption("No passages retrieved (the reply was made without searching or before the API).")
+        else:
+            st.html(
+                table_html(
+                    ["Source", "Section", "Score", "Cited"],
+                    [
+                        [
+                            readable_name(p["source"]) if p["source"] != NOT_RECORDED else NOT_RECORDED,
+                            p["section"],
+                            nr(p["score"], lambda v: f"{v:.4f}"),
+                            {True: "✓", False: "", None: NOT_RECORDED}[p["cited"]],
+                        ]
+                        for p in d["passages"]
+                    ],
+                )
+            )
+    with tabs[3]:
+        st.html(
+            fields_table(
+                [
+                    ("Model", d["model"]),
+                    ("Search mode", d["mode"]),
+                    ("First word", nr(d["ttft_s"], lambda v: f"{v:.2f} s")),
+                    ("Total time", nr(d["total_s"], lambda v: f"{v:.2f} s")),
+                    ("Tokens in / out", f"{nr(d['tokens_in'])} / {nr(d['tokens_out'])}"),
+                    ("Estimated cost", nr(d["cost_usd"], lambda v: f"${v:.6f}")),
+                ]
+            )
+        )
+        st.caption("Replies made without an API call have no timing. Cost is an estimate.")
+    with tabs[4]:
+        follow = d["follow_ups"]
+        st.html(
+            fields_table(
+                [
+                    ("Refusal reason", d["refusal_reason"] or "None"),
+                    ("Grounding flag", nr(d["grounding_flag"], lambda v: "Yes" if v else "No")),
+                    ("Numbers not in sources", nr(d["ungrounded"], lambda v: ", ".join(v) or "None")),
+                    ("Manager notes", nr(d["escalations"], lambda v: ", ".join(v) or "None")),
+                    ("Error", d["error"] or "None"),
+                    ("Error message", d["error_message"] or ("None" if not d["error"] else NOT_RECORDED)),
+                    ("Follow-ups shown", NOT_RECORDED if follow is None else (" · ".join(follow) or "None")),
+                ]
+            )
+        )
+    with tabs[5]:
+        f = d["feedback"]
+        if not f:
+            st.caption("No feedback")
+        else:
+            st.html(
+                fields_table(
+                    [
+                        ("Rating", "👍 Helpful" if f.get("helpful") else "👎 Not helpful"),
+                        ("Reason", f.get("reason") or "None given"),
+                        ("Time (UTC)", short_time(f.get("time"))),
+                    ]
+                )
+            )
+    with tabs[6]:
+        st.code(json.dumps(redact(d["raw"]), ensure_ascii=False, indent=2), language="json", wrap_lines=True)
+    b1, b2 = st.columns(2)
+    b1.download_button(
+        "Download this request (JSON)",
+        redact(request_json(record, feedback_rows)),
+        f"request-{d['id']}.json",
+        "application/json",
+        icon=":material/download:",
+        on_click="ignore",
+        width="stretch",
+    )
+    if b2.button("Close", icon=":material/close:", width="stretch"):
+        st.rerun()
+
+
+PAGE_SIZE = 50
+st.subheader("Requests")
+st.caption("Every request: answered, refused, off-topic, greeting, error or cap. Select a row to see all its details.")
+all_rows = list_rows(usage, feedback)
+props = sorted({r["property"] for r in all_rows if r["property"] != NOT_RECORDED})
+f1, f2, f3 = st.columns(3)
+picked = f1.date_input("Date range (UTC)", value=(), max_value=date.today(), help="Pick a start and an end date")
+pick_prop = f2.selectbox("Property", ["All properties", *props])
+pick_results = f3.multiselect("Result", list(RESULTS), format_func=RESULTS.get, placeholder="All results")
+g1, g2, g3 = st.columns([1, 1, 2], vertical_alignment="bottom")
+pick_feedback = g1.selectbox(
+    "Feedback", ["any", "up", "down"], format_func={"any": "Any", "up": "👍", "down": "👎"}.get
 )
-shown = [{**r, "time": str(r.get("time", ""))[:19].replace("T", " ")} for r in table[:200]]
-st.dataframe(
+errors_only = g2.checkbox("Errors only")
+search = g3.text_input("Search questions", placeholder="Words in the question")
+dates = list(picked) if isinstance(picked, list | tuple) else [picked]
+start = dates[0] if dates else None
+end = dates[1] if len(dates) > 1 else start
+filters = (start, end, pick_prop, tuple(pick_results), pick_feedback, errors_only, search.strip().lower())
+matching = filter_requests(
+    all_rows,
+    start=start,
+    end=end,
+    prop=None if pick_prop == "All properties" else pick_prop,
+    outcomes=pick_results,
+    feedback=pick_feedback,
+    errors_only=errors_only,
+    text=search,
+)
+if st.session_state.get("requests_filters") != filters:  # new filters: back to the first page
+    st.session_state.requests_filters, st.session_state.requests_limit = filters, PAGE_SIZE
+limit = st.session_state.setdefault("requests_limit", PAGE_SIZE)
+shown = matching[:limit]
+in_log = f" ({len(all_rows)} in the log)" if len(matching) != len(all_rows) else ""
+st.caption(f"Showing {len(shown)} of {len(matching)} requests{in_log}, newest first.")
+event = st.dataframe(
     shown,
-    column_order=ACTIVITY_COLUMNS,
-    hide_index=True,
-    width="stretch",
+    column_order=("time", "property", "result", "question", "total", "cost", "feedback"),
     column_config={
         "time": "Time (UTC)",
         "property": "Property",
-        "source": st.column_config.SelectboxColumn(
-            "Asked as", options=list(SOURCES), help="How the question was asked"
-        ),
-        "kind": "Reply",
-        "model": "Model",
-        "tokens_in": "Tokens in",
-        "tokens_out": "Tokens out",
-        "cost_usd": st.column_config.NumberColumn("Cost (USD)", format="%.5f"),
-        "total_s": st.column_config.NumberColumn("Answer time (s)", format="%.2f"),
-        "refused": "Refused",
-        "grounding_flag": "Grounding flag",
-        "error": "Error",
-        "feedback": "👍 / 👎",
-        "reason": "Reason",
+        "result": "Result",
+        "question": st.column_config.TextColumn("Question", width="large"),
+        "total": "Total time",
+        "cost": "Cost",
+        "feedback": "Feedback",
     },
+    hide_index=True,
+    width="stretch",
+    on_select="rerun",
+    selection_mode="single-row",
+    key=table_key(filters, limit),
 )
-st.caption(f"Showing {min(len(table), 200)} of {len(table)} matching entries, newest first. No question text here.")
+if len(matching) > limit:
+    if st.button(f"Load {min(PAGE_SIZE, len(matching) - limit)} more", icon=":material/expand_more:"):
+        st.session_state.requests_limit = limit + PAGE_SIZE
+        st.rerun()
+
+rid = selected_id(shown, event)
+if rid is None:
+    st.session_state.pop("requests_open", None)
+elif st.session_state.get("requests_open") != rid:  # opens once per selection; Close doesn't reopen it
+    st.session_state.requests_open = rid
+    record = find(usage, rid)
+    if record is not None:
+        request_dialog(record, feedback)
 
 d1, d2, d3 = st.columns(3)
-d1.download_button("Download usage CSV", to_csv(usage), f"usage-{today}.csv", "text/csv", icon=":material/download:")
+d1.download_button(
+    "Download usage CSV", to_csv(usage), f"usage-{today}.csv", "text/csv", icon=":material/download:", on_click="ignore"
+)
 d2.download_button(
-    "Download feedback CSV", to_csv(feedback), f"feedback-{today}.csv", "text/csv", icon=":material/download:"
+    "Download feedback CSV",
+    to_csv(feedback),
+    f"feedback-{today}.csv",
+    "text/csv",
+    icon=":material/download:",
+    on_click="ignore",
 )
 d3.download_button(
-    "Download errors CSV", to_csv(errors, ERROR_COLUMNS), f"errors-{today}.csv", "text/csv", icon=":material/download:"
+    "Download errors CSV",
+    to_csv(errors, ERROR_COLUMNS),
+    f"errors-{today}.csv",
+    "text/csv",
+    icon=":material/download:",
+    on_click="ignore",
 )
-st.caption("The usage and feedback files include questions as typed by visitors. Keep them private.")
-
-# ---------- Recent questions (detail) ----------
-st.subheader("Recent questions")
-if not s["recent"]:
-    st.caption("No questions logged yet.")
-for r in s["recent"]:
-    state = r.get("error") or ("refused" if r.get("refused") else "answered")
-    title = f"{r.get('time', '')[:19].replace('T', ' ')} · {r.get('property', '')} · {state}"
-    with st.expander(title):
-        st.text(r.get("question", ""))
-        st.caption(
-            f"Model {r.get('model') or 'none (blocked before the API)'} · mode {r.get('mode')} · "
-            f"first word {ui.fmt_seconds(r.get('ttft_s'))} · total {ui.fmt_seconds(r.get('total_s'))} · "
-            f"tokens {r.get('tokens_in', 0)}/{r.get('tokens_out', 0)} · cost {money(r.get('cost_usd'))}"
-        )
-        if r.get("ungrounded"):
-            st.caption(f"Ungrounded numbers: {', '.join(r['ungrounded'])}")
-        if r.get("escalations"):
-            st.caption(f"Manager notes: {', '.join(r['escalations'])}")
-        passages = [
-            [p["source"], p["section"], f"{p['score']:.4f}" if p.get("score") is not None else "–"]
-            for p in r.get("retrieved", [])
-        ]
-        if passages:
-            st.html(table_html(["Retrieved passage", "Section", "Score"], passages))
+st.caption("The logs include questions and answers as typed and shown. Keep downloads private.")

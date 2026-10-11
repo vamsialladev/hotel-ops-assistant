@@ -2,7 +2,8 @@ import csv
 import io
 
 from src.errors import error_record, is_control_flow, record_error
-from src.monitoring import activity, alerts, csv_safe, filter_rows, format_uptime, health, recent_errors, to_csv
+from src.monitoring import alerts, csv_safe, format_uptime, health, recent_errors, to_csv
+from src.requestlog import filter_requests, list_rows
 from src.usage import read_jsonl
 
 TODAY = "2026-10-10"
@@ -59,19 +60,20 @@ def test_recent_errors_newest_first():
     assert [e["message"] for e in recent_errors(ERRORS)] == ["429", "old"]
 
 
-def test_activity_joins_feedback_by_turn_and_has_no_question_text():
-    rows = activity([{**r, "question": "Dogs for Jane Doe?"} for r in USAGE], FEEDBACK)
-    assert [r["time"][:13] for r in rows] == ["2026-10-10T12", "2026-10-10T11", "2026-10-10T10", "2026-10-09T10"]
-    assert (rows[2]["feedback"], rows[1]["feedback"], rows[1]["reason"]) == ("👍", "👎", "Wrong fact")
-    assert rows[0]["feedback"] is None and all("question" not in r for r in rows)
+def test_request_list_joins_older_feedback_by_turn_id():
+    rows = list_rows(USAGE, FEEDBACK)
+    assert [r["time"][:13] for r in rows] == ["2026-10-10 12", "2026-10-10 11", "2026-10-10 10", "2026-10-09 10"]
+    assert (rows[2]["feedback"], rows[1]["feedback"], rows[0]["feedback"]) == ("👍", "👎", "")
 
 
-def test_filters_by_date_property_and_errors():
-    rows = activity(USAGE, FEEDBACK)
-    assert len(filter_rows(rows, day=TODAY)) == 3
-    assert len(filter_rows(rows, prop="mountain-lodge")) == 2
-    assert [r["error"] for r in filter_rows(rows, errors_only=True)] == ["rate_limit"]
-    assert filter_rows(rows, day=TODAY, prop="beach-resort", errors_only=True) == []
+def test_request_list_filters_by_date_property_and_errors():
+    from datetime import date
+
+    rows, today = list_rows(USAGE, FEEDBACK), date.fromisoformat(TODAY)
+    assert len(filter_requests(rows, start=today)) == 3
+    assert len(filter_requests(rows, prop="mountain-lodge")) == 2
+    assert [r["outcome"] for r in filter_requests(rows, errors_only=True)] == ["error"]
+    assert filter_requests(rows, start=today, prop="beach-resort", errors_only=True) == []
 
 
 def test_csv_export_blocks_formula_injection():
@@ -105,13 +107,6 @@ def test_control_flow_exceptions_pass_through_the_boundary():
 
     assert is_control_flow(StopException()) and is_control_flow(RerunException(None))
     assert is_control_flow(KeyboardInterrupt()) and not is_control_flow(RuntimeError("x"))
-
-
-def test_activity_shows_how_each_question_was_asked():
-    from src.monitoring import ACTIVITY_COLUMNS
-
-    rows = activity([{"turn_id": "a", "source": "follow_up"}, {"turn_id": "b"}], [])
-    assert "source" in ACTIVITY_COLUMNS and [r["source"] for r in rows] == ["typed", "follow_up"]
 
 
 def test_first_question_success_counts_each_session_once():
