@@ -18,3 +18,6 @@ review/
 
 # Demo video and its raw recording (published on the portfolio site, not in this repo)
 docs/video/
+
+# Private brand notes, drafts and photos (kept outside the repos; never commit)
+brand-content/
