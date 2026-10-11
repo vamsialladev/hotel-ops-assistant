@@ -23,8 +23,15 @@ HERE = Path(__file__).parent
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
 
-@st.cache_resource(show_spinner=False)
 def brand():
+    """Re-read when branding.toml changes: a push updates the file in place on Streamlit Cloud."""
+    from src.branding import BRANDING_FILE
+
+    return _brand(BRANDING_FILE.stat().st_mtime_ns if BRANDING_FILE.exists() else 0)
+
+
+@st.cache_resource(show_spinner=False)
+def _brand(mtime_ns: int):
     return load_branding()
 
 

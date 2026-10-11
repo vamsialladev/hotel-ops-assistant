@@ -252,3 +252,19 @@ def test_refusal_shows_did_you_mean_and_topics_never_follow_ups(chat_app, monkey
     assert "can't answer that from this hotel's documents" in text and "Did you mean:" in text
     assert "Related questions" not in text and reply.get("button_group")
     assert read_jsonl(logs / "usage.jsonl")[-1]["kind"] == "refusal"
+
+
+def test_branding_is_reread_when_the_file_changes(monkeypatch, tmp_path):
+    """A push that edits branding.toml (e.g. a footer link) must show without a reboot."""
+    import src.branding as branding
+
+    path = tmp_path / "branding.toml"
+    path.write_text('[links]\ncase_study = "https://old.example/"\n', encoding="utf-8")
+    monkeypatch.setattr(branding, "BRANDING_FILE", path)
+    monkeypatch.setattr(components, "load_branding", lambda: branding.load_branding(path))
+    assert components.brand().links["case_study"] == "https://old.example/"
+    path.write_text('[links]\ncase_study = "https://vamsialla.com/"\n', encoding="utf-8")
+    import os
+
+    os.utime(path, ns=(path.stat().st_atime_ns, path.stat().st_mtime_ns + 1_000_000_000))
+    assert components.brand().links["case_study"] == "https://vamsialla.com/"
