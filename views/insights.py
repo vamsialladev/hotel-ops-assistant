@@ -33,12 +33,28 @@ else:
     )
     left, right = st.columns(2)
     with left:
-        st.subheader("Most common topics")
+        st.subheader("How people ask")
+        if data["how_asked"]:
+            st.html(bar_list_html(data["how_asked"]))
+            detail = ", ".join(f"{label} {n}" for label, n in data["by_source"])
+            st.caption(f"Typed questions vs suggestions clicked in the app. By source: {detail}.")
+        else:
+            st.caption("No questions yet.")
+    with right:
+        st.subheader("Most-used topics")
         if data["topics"]:
             st.html(bar_list_html(data["topics"]))
-            st.caption("Topic = the document section of the first cited source.")
+            st.caption("Topic of the first cited source.")
         else:
             st.caption("No answered questions yet.")
+    left, right = st.columns(2)
+    with left:
+        st.subheader("Suggestions that got 👎")
+        if data["disliked_suggestions"]:
+            rows = [[s["question"], s["source"], s["reason"] or "–"] for s in data["disliked_suggestions"]]
+            st.html(table_html(["Question", "Suggested as", "Reason"], rows))
+        else:
+            st.caption("None so far.")
     with right:
         st.subheader("Why answers weren't helpful")
         if data["reasons"]:
@@ -47,7 +63,10 @@ else:
             st.caption("No 👎 reasons given yet.")
 
     st.subheader("Possible policy gaps")
-    st.caption("Questions the documents couldn't answer, newest first. Emails and phone numbers are masked.")
+    st.caption(
+        "Typed questions the documents couldn't answer, newest first. Off-topic input (stopped before the AI) and "
+        "suggestions aren't counted. Emails and phone numbers are masked."
+    )
     if data["gaps"]:
         rows = [[g["time"][:16].replace("T", " "), b.property_name(g["property"]), g["question"]] for g in data["gaps"]]
         st.html(table_html(["When (UTC)", "Property", "Question"], rows))

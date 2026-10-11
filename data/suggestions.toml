@@ -1,0 +1,161 @@
+# Curated questions the assistant can always answer, by topic and property. Used for the welcome screen
+# ("Good questions look like…" and topic chips), follow-ups under answers, "Did you mean" after a refusal,
+# and the chat input hint. Not indexed: it's a list of questions, not policy.
+#
+# A topic appears for a property only when the index has a passage in one of its `sections` (document
+# headings) or `sources` (whole documents) for that property or the shared documents, and the topic has
+# examples for that property. Every example must retrieve a passage of its topic and get a real answer:
+# tests/test_suggestions.py and `python -m eval.run_suggestions_eval --answers` check both.
+#
+# There's no Safety topic: the only safety document is a scanned image the index can't read (decision 9).
+
+[good]  # "Good questions look like…": one policy question, plain English. Also the popular fallback.
+beach-resort = [
+  "Can a guest bring their dog?",
+  "How late can a Gold member check out on Saturday?",
+  "What time is breakfast served?",
+]
+mountain-lodge = [
+  "Can a guest bring their dog?",
+  "Is breakfast included?",
+  "Can a guest check in early?",
+]
+
+[[topics]]
+id = "pets"
+label = "Pets"
+icon = ":material/pets:"
+sections = ["Pets"]
+[topics.examples]
+beach-resort = ["Can a guest bring their dog?", "Are dogs allowed at the pool?", "Is there a fee for service animals?"]
+mountain-lodge = ["Can a guest bring their dog?", "What is the pet fee?", "Can a guest bring a cat?"]
+
+[[topics]]
+id = "checkin"
+label = "Check-in and check-out"
+icon = ":material/schedule:"
+sections = ["Check-in and Check-out", "Late Check-out", "Late Check-out (Property Override)", "Early Check-in"]
+sources = ["mountain-lodge/front_desk_notes.txt"]
+[topics.examples]
+beach-resort = [
+  "What time is check-in?",
+  "Can a guest check in early?",
+  "How late can a Gold member check out on Saturday?",
+  "How much is late checkout for a guest who isn't a member?",
+]
+mountain-lodge = [
+  "What time is check-in?",
+  "Can a guest check in early?",
+  "What time is checkout?",
+  "How much is late checkout for a guest who isn't a member?",
+]
+
+[[topics]]
+id = "transport"
+label = "Parking and transport"
+icon = ":material/local_parking:"
+sections = ["Parking", "Airport Transfers"]
+[topics.examples]
+beach-resort = ["How much is valet parking?", "How much is airport pickup from MIA?", "Do you offer transfers from Fort Lauderdale?"]
+mountain-lodge = ["Is parking free?", "Where should a guest park their RV?", "How much is the airport shuttle?"]
+
+[[topics]]
+id = "dining"
+label = "Dining"
+icon = ":material/restaurant:"
+sections = ["Breakfast", "Room Service"]
+sources = ["beach-resort/restaurant_menu.pdf"]
+[topics.examples]
+beach-resort = ["What time is breakfast served?", "Is room service available?", "Are there gluten-free options?"]
+mountain-lodge = ["Is breakfast included?", "Is there a restaurant?", "Can guests have food delivered?"]
+
+[[topics]]
+id = "spa"
+label = "Spa"
+icon = ":material/spa:"
+sources = ["beach-resort/spa_menu.md"]
+[topics.examples]
+beach-resort = ["What are the spa hours?", "How much is a 60-minute Swedish massage?", "Do Gold members get a spa discount?"]
+
+[[topics]]
+id = "amenities"
+label = "Pool and amenities"
+icon = ":material/pool:"
+sections = ["Pool and Beach", "Amenities", "Fitness Center", "Hiking and Activities"]
+[topics.examples]
+beach-resort = ["What are the pool hours?", "Is there a gym?", "How much is a beach chair set?"]
+mountain-lodge = ["Is there a pool?", "Is there a gym?", "What time are the fire pit evenings?", "Are there hiking trails nearby?"]
+
+[[topics]]
+id = "wifi"
+label = "Wi-Fi and fees"
+icon = ":material/wifi:"
+sections = ["Wi-Fi", "Resort Fee"]
+[topics.examples]
+beach-resort = ["Is there Wi-Fi?", "What does the resort fee include?", "How much is the resort fee?"]
+mountain-lodge = ["Is there Wi-Fi?", "Is there a resort fee?", "Is the Wi-Fi good in the cabins?"]
+
+[[topics]]
+id = "events"
+label = "Events and weddings"
+icon = ":material/celebration:"
+sources = ["mountain-lodge/events_weddings.pdf"]
+[topics.examples]
+mountain-lodge = [
+  "How many people fit on the garden lawn for a wedding?",
+  "What deposit is needed to book an event?",
+  "Can we use an outside caterer?",
+]
+
+[[topics]]
+id = "loyalty"
+label = "Loyalty program"
+icon = ":material/workspace_premium:"
+sources = ["shared/loyalty_program.md"]
+[topics.examples]
+beach-resort = ["How do members earn points?", "What are the benefits of Gold status?", "How do I verify a guest's membership?"]
+mountain-lodge = ["How do members earn points?", "What are the benefits of Gold status?", "How do I verify a guest's membership?"]
+
+[[topics]]
+id = "refunds"
+label = "Refunds and cancellations"
+icon = ":material/receipt_long:"
+sections = ["Cancellation", "Refunds and Escalation"]
+[topics.examples]
+beach-resort = [
+  "What is the cancellation policy?",
+  "How much credit can the front desk give without approval?",
+  "Can I give a guest a $300 refund myself?",
+]
+mountain-lodge = [
+  "What is the cancellation policy?",
+  "How much credit can the front desk give without approval?",
+  "A guest on a non-refundable rate wants their money back. Can I refund it?",
+]
+
+[[topics]]
+id = "house_rules"
+label = "House rules"
+icon = ":material/gavel:"
+sections = ["Smoking", "Quiet Hours"]
+[topics.examples]
+beach-resort = ["Can guests smoke on the balcony?", "What are the quiet hours?"]
+mountain-lodge = ["Can guests smoke on the balcony?", "What are the quiet hours?", "What happens after a third noise complaint?"]
+
+[[topics]]
+id = "housekeeping"
+label = "Housekeeping and lost items"
+icon = ":material/cleaning_services:"
+sections = ["Daily Service", "Extra Items", "Lost and Found", "Laundry"]
+[topics.examples]
+beach-resort = ["When is housekeeping service?", "How long are lost items kept?", "Is there a laundry service?", "Are cribs free?"]
+mountain-lodge = ["When is housekeeping service?", "How long are lost items kept?", "Is there a laundry room?", "Are cribs free?"]
+
+[[topics]]
+id = "services"
+label = "Luggage and accessibility"
+icon = ":material/luggage:"
+sections = ["Luggage Storage", "Accessibility", "Wake-up Calls and Deliveries"]
+[topics.examples]
+beach-resort = ["Can a guest store luggage after checkout?", "Do you have accessible rooms?", "How long are packages held?"]
+mountain-lodge = ["Can a guest store luggage after checkout?", "Do you have accessible rooms?", "How long are packages held?"]

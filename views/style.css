@@ -28,7 +28,7 @@ h1, h2, h3 { letter-spacing: -0.01em; }
 .hoa-eyebrow { color: var(--hoa-brass); font-weight: 600; font-size: .9rem; letter-spacing: .02em; margin: 0 0 .2rem; }
 .hoa-title { font-family: "Newsreader", Georgia, serif; font-weight: 600; font-size: 2.3rem; line-height: 1.1;
   color: var(--hoa-ink); margin: 0 0 .35rem; }
-.hoa-subtitle { color: var(--hoa-muted); font-size: 1.05rem; margin: 0 0 1rem; max-width: 60ch; }
+.hoa-subtitle { color: var(--hoa-muted); font-size: 1.05rem; margin: 0 0 1rem; max-width: 72ch; }
 .hoa-property { display: inline-flex; align-items: baseline; gap: .5rem; background: var(--hoa-soft);
   border: 1px solid var(--hoa-line); border-radius: .7rem; padding: .45rem .8rem; margin: .2rem 0 1rem; }
 .hoa-property b { color: var(--hoa-green); font-weight: 700; }
@@ -128,3 +128,33 @@ h1, h2, h3 { letter-spacing: -0.01em; }
 .hoa-input-note { margin: .1rem 0 0; text-align: center; font-size: .78rem; color: var(--hoa-muted); }
 .hoa-input-note a { color: var(--hoa-green); font-weight: 600; text-underline-offset: 3px; }
 .hoa-links a { color: var(--hoa-green); text-underline-offset: 3px; }
+
+/* Welcome screen guidance: How to use strip and "What this demo knows" (one line each on phones) */
+.hoa-howto { list-style: none; margin: 0; padding: 0 !important; display: flex; gap: .4rem 1.1rem; flex-wrap: wrap;
+  font-size: .86rem; color: var(--hoa-ink); }
+.hoa-howto li { display: flex; align-items: center; gap: .45rem; }
+.hoa-howto span { display: inline-flex; align-items: center; justify-content: center; width: 1.45rem; height: 1.45rem;
+  border-radius: 50%; background: var(--hoa-green); color: var(--hoa-on-green); font-weight: 700; font-size: .78rem; flex: none; }
+.hoa-knows { background: var(--hoa-soft); border: 1px solid var(--hoa-line); border-left: 4px solid var(--hoa-brass);
+  border-radius: .75rem; padding: .55rem .9rem; margin: 0 0 .5rem; font-size: .88rem; color: var(--hoa-ink); }
+.hoa-knows p { margin: .1rem 0; }
+.hoa-tip { color: var(--hoa-muted); font-weight: 400; font-size: .88rem; margin-left: .4rem; }
+.hoa-knows a { color: var(--hoa-green); font-weight: 600; text-underline-offset: 3px; }
+.hoa-knows-cant { color: var(--hoa-muted); }
+.hoa-knows-short { display: none; }
+@media (max-width: 640px) {
+  .hoa-howto { flex-direction: column; gap: .3rem; }
+  .hoa-knows-full { display: none; }
+  .hoa-knows-short { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+.hoa-label { margin: .1rem 0 .35rem; font-size: .95rem; color: var(--hoa-ink); }
+/* The welcome-screen knows panel holds the topic chips (a keyed Streamlit container) */
+[class*="st-key-knows_"] { background: var(--hoa-soft); border: 1px solid var(--hoa-line); border-left: 4px solid var(--hoa-brass);
+  border-radius: .75rem; padding: .6rem .9rem .5rem; gap: .35rem; }
+[class*="st-key-knows_"] .hoa-knows { background: none; border: 0; padding: 0; margin: 0; }
+.hoa-knows-cant { color: var(--hoa-muted); font-size: .85rem; margin: 0; }
+.hoa-knows-cant a { color: var(--hoa-green); font-weight: 600; text-underline-offset: 3px; }
+@media (max-width: 640px) { [class*="st-key-knows_"] .hoa-knows-cant { display: none; } }
+[class*="st-key-knows_"] [data-testid="stButtonGroup"] button { min-height: 2rem; padding: .15rem .65rem; font-size: .88rem; }
+.st-key-welcome { gap: .5rem; }
+.st-key-welcome .hoa-label { margin: 0; }

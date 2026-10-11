@@ -9,6 +9,8 @@ import io
 ACTIVITY_COLUMNS = (
     "time",
     "property",
+    "source",
+    "kind",
     "model",
     "tokens_in",
     "tokens_out",
@@ -91,6 +93,7 @@ def activity(usage_rows: list, feedback_rows: list) -> list[dict]:
         rows.append(
             {
                 **{c: r.get(c) for c in ACTIVITY_COLUMNS if c not in ("feedback", "reason")},
+                "source": r.get("source") or "typed",  # older rows predate question sources
                 "feedback": None if f is None else ("👍" if f.get("helpful") else "👎"),
                 "reason": None if f is None else f.get("reason"),
             }
@@ -125,3 +128,11 @@ def to_csv(rows: list, columns=None) -> str:
     for r in rows:
         writer.writerow([csv_safe(r.get(c)) for c in columns])
     return buffer.getvalue()
+
+
+def first_question_success(usage_rows: list) -> dict:
+    """Live first-question success: of the sessions in the log, how many got a cited answer (or a greeting
+    reply) to their very first message. Rows from before sessions were tracked are ignored."""
+    firsts = [r for r in usage_rows if r.get("first") and r.get("session_id")]
+    ok = sum(1 for r in firsts if r.get("kind") in ("answer", "greeting") and not r.get("error"))
+    return {"sessions": len(firsts), "ok": ok, "rate": ok / len(firsts) if firsts else None}

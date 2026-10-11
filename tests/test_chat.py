@@ -65,3 +65,12 @@ def test_new_conversation_is_only_available_when_there_is_something_to_clear():
     assert state.has_messages("beach-resort") and not state.has_messages("mountain-lodge")
     state.clear("beach-resort")
     assert not state.has_messages("beach-resort")
+
+
+def test_greetings_are_not_counted_and_the_first_message_is_marked():
+    chat = ChatState()
+    hi = chat.add(Turn("hi", "beach-resort"), counted=False)
+    q = chat.add(Turn("Can a guest bring their dog?", "beach-resort"))
+    assert hi.first and not q.first
+    assert (chat.messages, chat.asked) == (2, 1)
+    assert chat.questions("beach-resort") == ["hi", "Can a guest bring their dog?"]

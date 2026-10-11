@@ -4,22 +4,37 @@ import logging
 
 import streamlit as st
 
-from src import service
+from src import assist, intents, service
 from src.chat import FEEDBACK_REASONS, Turn, remaining, validate_question
 from src.config import MAX_QUESTION_CHARS, MAX_QUESTIONS_PER_SESSION
 from src.display import esc, quote_markdown, safe_markdown, scope_label, source_chip_html, source_label
 from src.errors import UNAVAILABLE, category, classify, private_detail, record_error
 from src.escalation import RULES_BY_ID
 from src.feedback import log_feedback
-from src.generate import AnswerStream
+from src.generate import NOT_FOUND, AnswerStream
 from src.library import readable_name
+from src.suggestions import available_topics, hints, knows, load_catalog, topic_of
 from src.usage import log_usage
 from views import components as ui
 
 log = logging.getLogger("hotel_ops.app")
-b, retriever, chat = ui.brand(), ui.retriever(), ui.chat_state()
+b, retriever, chat, catalog = ui.brand(), ui.retriever(), ui.chat_state(), load_catalog()
 
-PLACEHOLDER = "Ask about a hotel policy. Don't enter guest names or personal details."
+PRIVACY = "Don't enter guest names or personal details."
+TIP = "Ask one policy question at a time, in plain English."
+REFUSAL_HEAD = "I can't answer that from this hotel's documents."
+SUGGESTION_LABELS = {
+    "follow_up": "Related questions",
+    "did_you_mean": "Did you mean:",
+    "popular": "Try one of these popular questions:",
+    "examples": "Try one of these:",
+}
+SUGGESTION_SOURCES = {  # suggestion list -> question source logged when one is clicked
+    "follow_up": "follow_up",
+    "did_you_mean": "did_you_mean",
+    "popular": "popular",
+    "examples": "example",
+}
 SESSION_LIMIT = (
     f"You've reached this demo's limit of {MAX_QUESTIONS_PER_SESSION} questions per session. Thanks for trying it! "
     "The How it works page shows the measured results."
@@ -27,38 +42,56 @@ SESSION_LIMIT = (
 DAILY_LIMIT = "The demo has reached its daily question limit. Please come back tomorrow."
 PAGE_ERROR_SHORT = "That didn't work. Please try again; the error was logged for the app owner."
 USER_AVATAR, BOT_AVATAR = ":material/person:", ui.asset("assets/favicon.png")
-
+HOW_TO = (
+    '<ol class="hoa-howto" aria-label="How to use">'
+    "<li><span>1</span>Pick your property</li>"
+    "<li><span>2</span>Tap a topic or type your question</li>"
+    "<li><span>3</span>Check the sources, and ask a manager when the answer says so</li>"
+    "</ol>"
+)
 
 NEW_CHAT_TOAST = "Started a new conversation"
 NEW_CHAT_EMPTY_HELP = "This conversation is already empty"
 guard = ui.safe_callback("Assistant")
+TURN_WIDGETS = ("reason_", "send_", "skip_", "up_", "down_", "topics_")
 
 
 # ---------- callbacks (run before the rerun, so history is never lost and nothing is re-asked) ----------
 @guard
-def ask_later(question: str):
-    st.session_state.pending = question
+def ask_later(question: str, source: str = "typed"):
+    """A suggestion click: asked on the next run exactly like a typed question, and counted the same way."""
+    st.session_state.pending = {"question": question, "source": source}
 
 
 @guard
 def new_conversation(prop: str):
-    """Clear only this property's chat, drop the cleared turns' feedback widgets, scroll to the top and
-    confirm with a toast. The question limits are not reset."""
+    """Clear only this property's chat, drop the cleared turns' widgets, scroll to the top, confirm with a toast,
+    and put the cursor back in the chat input. The question limits are not reset."""
     if not chat.has_messages(prop):
         return
     for turn_id in chat.clear(prop):
-        for prefix in ("reason_", "send_", "skip_", "up_", "down_"):
+        for prefix in TURN_WIDGETS:
             st.session_state.pop(f"{prefix}{turn_id}", None)
     st.session_state.pop("pending", None)
+    st.session_state.pop(f"topics_welcome_{prop}", None)
     st.session_state.scroll_top = True
     st.session_state.toast = NEW_CHAT_TOAST
+    st.session_state.focus = "new_chat"
 
 
 @guard
 def feedback(turn_id: str, helpful: bool, reason: str | None = None):
     turn = chat.find(turn_id)
     if turn and turn.result and turn.feedback in (None, "down_pending"):
-        log_feedback(turn.question, turn.property, turn.result, helpful=helpful, reason=reason, turn_id=turn.id)
+        log_feedback(
+            turn.question,
+            turn.property,
+            turn.result,
+            helpful=helpful,
+            reason=reason,
+            turn_id=turn.id,
+            source=turn.source,
+        )
         turn.feedback, turn.reason = ("up" if helpful else "down"), reason
 
 
@@ -67,6 +100,66 @@ def ask_reason(turn_id: str):
     turn = chat.find(turn_id)
     if turn and turn.feedback is None:
         turn.feedback = "down_pending"
+
+
+# ---------- guidance ----------
+def knows_html(prop: str, chips_below: bool = False) -> str:
+    """'What this demo knows': topics generated from the indexed documents, what it can't do, and a link.
+    On the welcome screen the topics are the clickable chips under this line (chips_below)."""
+    labels = knows(retriever.chunks, prop, catalog)
+    name = esc(b.property_name(prop))
+    library = '<a href="library" target="_self">Document library</a>'
+    topics = "tap a topic for example questions" if chips_below else esc(", ".join(labels))
+    return (
+        '<div class="hoa-knows" role="note">'
+        f'<p class="hoa-knows-full"><b>What this demo knows at {name}:</b> {len(labels)} topics, {topics}.</p>'
+        f'<p class="hoa-knows-short"><b>Knows:</b> {len(labels)} topics at {name} · {library}</p>'
+        "</div>"
+    )
+
+
+CANT = (
+    '<p class="hoa-knows-cant">It can&rsquo;t make bookings, look up guests or answer anything outside these '
+    'documents · <a href="library" target="_self">Document library</a></p>'
+)
+
+
+def suggestion_buttons(questions: list, source: str, key: str, label: str | None = None):
+    """Clickable questions. Each is a real button labelled with the question it asks."""
+    if not questions:
+        return
+    if label:
+        st.markdown(f"**{label}**")
+    row = st.container(horizontal=True, gap="small")
+    for i, q in enumerate(questions):
+        row.button(q, key=f"{key}_{i}", icon=":material/chat:", on_click=ask_later, args=(q, source))
+
+
+def topic_browser(prop: str, key: str, label: str = "Or browse by topic", show_label: bool = True):
+    """Topic chips; picking one shows 3-4 example questions to click."""
+    topics = {t.id: t for t in available_topics(retriever.chunks, prop, catalog)}
+    choice = st.pills(
+        label,
+        list(topics),
+        format_func=lambda i: f"{topics[i].icon} {topics[i].label}",
+        key=key,
+        label_visibility="visible" if show_label else "collapsed",
+    )
+    if choice in topics:
+        suggestion_buttons(topics[choice].examples[prop][:4], "topic", f"{key}_{choice}")
+
+
+def welcome(prop: str):
+    """How to use, what the demo knows (its topics are the chips), and good questions: one laptop screen."""
+    st.html(HOW_TO)
+    with st.container(key=f"knows_{prop}"):  # styled as one panel
+        st.html(knows_html(prop, chips_below=True))
+        topic_browser(prop, key=f"topics_welcome_{prop}", label="Topics", show_label=False)
+        st.html(CANT)
+    st.html(f'<p class="hoa-label"><b>Good questions look like…</b><span class="hoa-tip">{TIP}</span></p>')
+    good = catalog.good.get(prop, [])
+    for col, (i, q) in zip(st.columns(len(good) or 1, gap="small"), enumerate(good), strict=False):  # one row
+        col.button(q, key=f"good_{prop}_{i}", width="stretch", on_click=ask_later, args=(q, "example"))
 
 
 # ---------- rendering ----------
@@ -96,6 +189,15 @@ def render_feedback(turn: Turn):
     row.button("👎", key=f"down_{turn.id}", help="Not helpful", type="tertiary", on_click=ask_reason, args=(turn.id,))
 
 
+def render_suggestions(turn: Turn):
+    """Follow-ups under an answer; after a refusal, greeting or off-topic reply, recovery questions plus topics."""
+    source = SUGGESTION_SOURCES.get(turn.suggestion_label, "example")
+    label = SUGGESTION_LABELS.get(turn.suggestion_label)
+    suggestion_buttons(turn.suggestions, source, f"sugg_{turn.id}", label)
+    if turn.kind != "answer":
+        topic_browser(turn.property, key=f"topics_{turn.id}")
+
+
 def render_answer(turn: Turn, text_shown: bool = False):
     if turn.error:
         if turn.error == UNAVAILABLE:
@@ -104,8 +206,23 @@ def render_answer(turn: Turn, text_shown: bool = False):
             st.info(turn.error, icon=":material/hourglass_bottom:")
         return
     result = turn.result
+    if turn.kind == "greeting":
+        st.markdown(safe_markdown(result["answer"]))
+        st.html(knows_html(turn.property))
+        render_suggestions(turn)
+        return
+    if turn.kind == "scope":
+        name = b.property_name(turn.property)
+        st.markdown(
+            safe_markdown(f"{REFUSAL_HEAD} I answer questions about {name}'s policies, fees, amenities and procedures.")
+        )
+        render_suggestions(turn)
+        render_feedback(turn)
+        return
     rules = [RULES_BY_ID[r] for r in result.get("escalations", []) if r in RULES_BY_ID]
-    if not text_shown:
+    if turn.kind == "refusal" and result["answer"].strip() == NOT_FOUND:
+        st.markdown(f"{REFUSAL_HEAD} If it's a real guest question, please check with a manager.")
+    elif not text_shown:
         st.markdown(safe_markdown(result["answer"]))
     if result["found"] and not rules:
         st.html('<span class="hoa-status hoa-status-ok">Answered from the documents</span>')
@@ -123,6 +240,7 @@ def render_answer(turn: Turn, text_shown: bool = False):
             for c in cited:
                 st.markdown(f"**[{c['n']}] {safe_markdown(source_label(c))}** · {scope_label(c)}")
                 st.markdown(quote_markdown(c["text"]))
+    render_suggestions(turn)
     render_feedback(turn)
 
 
@@ -142,64 +260,94 @@ def stream_text(run: AnswerStream, waiting):
         yield safe_markdown(chunk)
 
 
-# ---------- one question ----------
-def handle(raw: str, prop: str):
+# ---------- one message ----------
+def finish(turn: Turn, kind: str, counted: bool = True):
+    """Attach the right suggestions (no API call), then add the turn to the conversation."""
+    turn.kind = kind
+    asked = chat.questions(turn.property) + [turn.question]
+    cited = (turn.result or {}).get("citations", [])
+    turn.suggestion_label, turn.suggestions = assist.suggestions_after(
+        kind, turn.question, turn.property, cited, asked, catalog
+    )
+    chat.add(turn, counted=counted)
+
+
+def log_turn(turn: Turn, kind: str, **fields):
+    """One usage record per message, with how it was asked and whether it was the session's first."""
+    cited = (turn.result or {}).get("citations", [])
+    topic = topic_of(cited[0], catalog) if cited else None
+    log_usage(
+        service.usage_record(
+            turn.question,
+            turn.property,
+            retriever.mode,
+            turn.result,
+            turn_id=turn.id,
+            source=turn.source,
+            kind=kind,
+            session_id=chat.session_id,
+            first=chat.messages == 0,
+            topic_group=topic.label if topic else None,
+            **fields,
+        )
+    )
+
+
+def handle(raw: str, prop: str, source: str = "typed"):
     question, error = validate_question(raw, MAX_QUESTION_CHARS)
     if error:
         st.warning(error, icon=":material/edit_note:")
         return
+    turn = Turn(question, prop, source=source)
+    intent = intents.detect(question)
+    if intent:  # hi / thanks / what can you do: instant, free, not counted toward the limits
+        turn.result = {"answer": intents.reply(intent, b.property_name(prop)), "found": False, "citations": []}
+        log_turn(turn, "greeting", pre_api=True)
+        finish(turn, "greeting", counted=False)
+        render_turn(turn)
+        return
     if chat.asked >= MAX_QUESTIONS_PER_SESSION:
         st.info(SESSION_LIMIT, icon=":material/hourglass_bottom:")
         return
-    turn = Turn(question, prop)
     with st.chat_message("user", avatar=USER_AVATAR):
         st.markdown(safe_markdown(question))
     with st.chat_message("assistant", avatar=BOT_AVATAR):
         prep = service.prepare(retriever, question, prop)
-        if prep["blocked"]:  # off-topic or nothing found: answered without an API call
+        if prep["blocked"]:  # off-topic or gibberish: answered without an API call
             turn.result = service.finalize(question, prop, service.blocked_result())
-            log_usage(service.usage_record(question, prop, retriever.mode, turn.result, pre_api=True, turn_id=turn.id))
+            log_turn(turn, "scope", pre_api=True)
+            finish(turn, "scope")
         elif not ui.daily_counter().try_consume():
             turn.error = DAILY_LIMIT
-            log_usage(
-                service.usage_record(question, prop, retriever.mode, pre_api=True, error="daily_cap", turn_id=turn.id)
-            )
+            log_turn(turn, "answer", pre_api=True, error="daily_cap")
+            chat.add(turn)
         else:
             waiting = st.empty()
             waiting.caption("Checking the hotel's documents...")
             run = AnswerStream(question, prop, prep["hits"])
+            streamed = st.empty()  # cleared for a refusal, which gets the recovery message instead
             try:
-                shown = st.write_stream(stream_text(run, waiting))
+                with streamed:
+                    shown = st.write_stream(stream_text(run, waiting))
             except Exception as exc:  # never show raw errors to visitors
                 waiting.empty()
                 code = classify(exc)
                 log.error("answer failed: %s (%s) %s", code, category(code), private_detail(exc))
                 record_error("Assistant", exc)
                 turn.error = UNAVAILABLE
-                log_usage(
-                    service.usage_record(question, prop, retriever.mode, hits=prep["hits"], error=code, turn_id=turn.id)
-                )
+                log_turn(turn, "answer", hits=prep["hits"], error=code)
                 chat.add(turn)
                 render_answer(turn)
                 return
             turn.result = service.finalize(question, prop, run.result)
-            log_usage(
-                service.usage_record(
-                    question,
-                    prop,
-                    retriever.mode,
-                    turn.result,
-                    prep["hits"],
-                    run.time_to_first_token,
-                    run.total_time,
-                    turn_id=turn.id,
-                )
-            )
-            chat.add(turn)
+            kind = "answer" if turn.result["found"] else "refusal"
+            log_turn(turn, kind, hits=prep["hits"], ttft=run.time_to_first_token, total=run.total_time)
+            finish(turn, kind)
             text_shown = isinstance(shown, str) and shown.strip() == safe_markdown(turn.result["answer"]).strip()
-            render_answer(turn, text_shown=text_shown)
+            if kind == "refusal":
+                streamed.empty()
+            render_answer(turn, text_shown=text_shown and kind == "answer")
             return
-        chat.add(turn)
         render_answer(turn)
 
 
@@ -209,8 +357,9 @@ st.session_state.setdefault("property", props[0])
 
 ui.header(b.name, b.tagline)
 # In the page (not the sidebar) so it's visible on phones, where the sidebar starts collapsed.
-prop = st.segmented_control("Your property", props, format_func=b.property_name, key="property", required=True)
-st.html(f'<div class="hoa-property"><b>{esc(b.property_name(prop))}</b><span>{esc(b.highlights(prop))}</span></div>')
+prop = st.segmented_control(
+    "Your property", props, format_func=b.property_name, key="property", required=True, label_visibility="collapsed"
+)
 
 with st.sidebar:
     # Both filled in at the end of the page, after this run's question is counted, so the button is
@@ -225,48 +374,35 @@ if message := st.session_state.pop("toast", None):
 if st.session_state.pop("callback_error", False):
     st.warning(PAGE_ERROR_SHORT, icon=":material/error:")
 
+tips = hints(prop, catalog)
 with st.bottom:  # pinned to the bottom of the page, under the chat input
-    typed = st.chat_input(PLACEHOLDER, max_chars=2000)
+    typed = st.chat_input(tips[chat.messages % len(tips)] if tips else "Ask about a hotel policy", key="chat_input")
     st.html(
         '<p class="hoa-input-note">Answers are written live by AI using only the documents in the '
-        '<a href="library" target="_self">Document library</a>.</p>'
+        f'<a href="library" target="_self">Document library</a>. {PRIVACY}</p>'
     )
-incoming = typed or st.session_state.pop("pending", None)
+pending = st.session_state.pop("pending", None)
+if isinstance(pending, str):  # older sessions stored the question only
+    pending = {"question": pending, "source": "typed"}
+incoming = {"question": typed, "source": "typed"} if typed else pending
 
 history = chat.history(prop)
 if not history and not incoming:
-    name = esc(b.property_name(prop))
+    with st.container(key="welcome"):  # tighter spacing so it fits one laptop screen
+        welcome(prop)
+else:  # in a conversation there's room for the property's highlights
     st.html(
-        '<div class="hoa-card hoa-accent">'
-        "<h3>Ask about a hotel policy</h3>"
-        "<p>Front-desk staff lose minutes searching PDFs, menus and notes for rules that differ by hotel, "
-        "while a guest waits.</p>"
-        f"<p>This assistant answers in seconds from {name}'s documents and the brand-wide standards, "
-        "and shows the source for every fact. When the documents don't say, it tells you to check with a manager.</p>"
-        '<div class="hoa-cols"><div><h4>Can help with</h4><ul><li>Hotel policies and fees</li>'
-        "<li>Amenities and opening hours</li><li>Loyalty benefits and procedures</li></ul></div>"
-        "<div><h4>Can't help with</h4><ul><li>Bookings or reservation changes</li>"
-        "<li>Guest records or personal details</li><li>Anything outside the hotel's documents</li></ul></div></div>"
-        "</div>"
+        f'<div class="hoa-property"><b>{esc(b.property_name(prop))}</b><span>{esc(b.highlights(prop))}</span></div>'
     )
-    st.markdown("**Try one of these**")
-    cols = st.columns(2)
-    for i, sample in enumerate(b.samples(prop)):
-        cols[i % 2].button(
-            sample,
-            key=f"main_{prop}_{i}",
-            icon=":material/chat:",
-            width="stretch",
-            wrap=True,  # long sample questions wrap instead of being cut off
-            on_click=ask_later,
-            args=(sample,),
-        )
 
 for turn in history:
     render_turn(turn)
 
 if incoming:
-    handle(incoming, prop)
+    handle(incoming["question"], prop, incoming.get("source", "typed"))
+    ui.focus_chat_input()  # ready for the next question (left alone on phones, so the keyboard stays down)
+elif st.session_state.pop("focus", None) == "new_chat":
+    ui.focus_chat_input(close_sidebar=True)  # on phones the sidebar covered the input after New conversation
 
 ui.footer()
 has_messages = chat.has_messages(prop)

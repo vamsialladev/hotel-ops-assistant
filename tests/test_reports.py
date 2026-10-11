@@ -72,3 +72,29 @@ def test_model_comparison_uses_the_same_question_set(tmp_path):
 def test_new_cost_line_format_is_parsed():
     line = "- Cost per question: $0.0002 ($0.18 per 1,000 questions; prices $0.1/$0.5 per M tokens)"
     assert parse_report(line)["cost_per_1000"] == 0.18
+
+
+def test_latest_visitor_report_and_baseline(tmp_path):
+    import json
+
+    from src.reports import latest_visitor
+
+    for name, rate in [
+        ("2026-10-10_1944_visitor_keyword_answers_baseline.json", 0.43),
+        ("2026-10-10_2005_visitor_keyword_answers.json", 1.0),
+        ("2026-10-10_2100_visitor_keyword.json", 0.9),  # routing only: not an answered run
+        ("2026-10-10_2007_visitor_hybrid_answers.json", 0.98),
+    ]:
+        (tmp_path / name).write_text(json.dumps({"first_question_success": rate}), encoding="utf-8")
+    assert latest_visitor("keyword", reports_dir=tmp_path)["first_question_success"] == 1.0
+    assert latest_visitor("keyword", baseline=True, reports_dir=tmp_path)["first_question_success"] == 0.43
+    assert latest_visitor("hybrid", reports_dir=tmp_path)["first_question_success"] == 0.98
+    assert latest_visitor("keyword", reports_dir=tmp_path / "missing") is None
+
+
+def test_the_shipped_visitor_reports_show_the_before_and_after():
+    from src.reports import latest_visitor
+
+    before, after = latest_visitor("keyword", baseline=True), latest_visitor("keyword")
+    assert before and after and after["first_question_success"] > before["first_question_success"]
+    assert after["in_scope_answered"] >= 0.8 and after["out_of_scope_refused"] == 1.0

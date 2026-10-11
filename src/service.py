@@ -52,6 +52,11 @@ def usage_record(
     pre_api: bool = False,
     error: str | None = None,
     turn_id: str | None = None,
+    source: str = "typed",
+    kind: str | None = None,
+    session_id: str | None = None,
+    first: bool = False,
+    topic_group: str | None = None,
     price_in: float | None = PRICE_IN_PER_M,
     price_out: float | None = PRICE_OUT_PER_M,
 ) -> dict:
@@ -59,6 +64,10 @@ def usage_record(
     tokens_in, tokens_out = usage["input_tokens"], usage["output_tokens"]
     return {
         "turn_id": turn_id,
+        "session_id": session_id,
+        "first": first,
+        "source": source,
+        "kind": kind or ("refusal" if result and not result["found"] else "answer" if result else None),
         "property": prop,
         "question": question,
         "model": None if pre_api else LLM_MODEL,
@@ -75,6 +84,7 @@ def usage_record(
         "ungrounded": (result or {}).get("ungrounded", []),
         "escalations": (result or {}).get("escalations", []),
         "topic": (result or {}).get("topic"),
+        "topic_group": topic_group,
         "retrieved": [{"source": h["source"], "section": h["section"], "score": h.get("score")} for h in hits or []],
         "error": error,
     }

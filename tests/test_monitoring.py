@@ -105,3 +105,25 @@ def test_control_flow_exceptions_pass_through_the_boundary():
 
     assert is_control_flow(StopException()) and is_control_flow(RerunException(None))
     assert is_control_flow(KeyboardInterrupt()) and not is_control_flow(RuntimeError("x"))
+
+
+def test_activity_shows_how_each_question_was_asked():
+    from src.monitoring import ACTIVITY_COLUMNS
+
+    rows = activity([{"turn_id": "a", "source": "follow_up"}, {"turn_id": "b"}], [])
+    assert "source" in ACTIVITY_COLUMNS and [r["source"] for r in rows] == ["typed", "follow_up"]
+
+
+def test_first_question_success_counts_each_session_once():
+    from src.monitoring import first_question_success
+
+    rows = [
+        {"session_id": "s1", "first": True, "kind": "answer"},
+        {"session_id": "s1", "first": False, "kind": "refusal"},
+        {"session_id": "s2", "first": True, "kind": "greeting"},
+        {"session_id": "s3", "first": True, "kind": "scope"},
+        {"session_id": "s4", "first": True, "kind": "answer", "error": "rate_limit"},
+        {"first": True, "kind": "answer"},  # before sessions were tracked
+    ]
+    assert first_question_success(rows) == {"sessions": 4, "ok": 2, "rate": 0.5}
+    assert first_question_success([])["rate"] is None

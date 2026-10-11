@@ -87,8 +87,9 @@ STDOUT_FIELDS = (
 )
 
 
-def log_usage(record: dict, path: Path = USAGE_FILE) -> dict:
+def log_usage(record: dict, path: Path | None = None) -> dict:
+    """`path` defaults to USAGE_FILE read at call time, so tests (and LOG_DIR) can redirect it."""
     record = {"time": now_iso(), **record}
-    append_jsonl(path, record)
+    append_jsonl(path or USAGE_FILE, record)
     logger.info("question %s", json.dumps({k: record.get(k) for k in STDOUT_FIELDS}))
     return record

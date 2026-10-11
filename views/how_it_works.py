@@ -7,7 +7,7 @@ import streamlit as st
 
 from src.config import LLM_MODEL, TOP_K
 from src.display import esc, escape_dollars, model_name, table_html
-from src.reports import business_case, latest, paired
+from src.reports import business_case, latest, latest_visitor, paired
 from views import components as ui
 
 b, retriever = ui.brand(), ui.retriever()
@@ -142,6 +142,35 @@ if pair:
         f"{old.get('runs', 1)} runs each. Quality is equal or slightly better with 5.5 (a difference of about one "
         "question), at about a fifth of the cost and a little more latency."
     )
+
+st.subheader("Helping users ask")
+visitor, before = latest_visitor(mode), latest_visitor(mode, baseline=True)
+if visitor:
+    change = f", up from {before['first_question_success']:.0%} before this work" if before else ""
+    st.html(
+        f'<div class="hoa-callout"><b>First-question success: {visitor["first_question_success"]:.0%}</b>{change}. '
+        f"Of {visitor['questions']} questions a visitor might type first, without seeing any examples "
+        f"({MODE_LABEL[visitor['mode']]}, real answers, {esc(visitor['date'])}): in-scope questions answered with a "
+        f"citation {visitor['in_scope_answered']:.0%}, out-of-scope questions refused "
+        f"{visitor['out_of_scope_refused']:.0%}, greetings and off-topic input handled "
+        f"{visitor['greetings_handled']:.0%} / {visitor['off_topic_handled']:.0%}.</div>"
+    )
+st.markdown(
+    """
+- **In-app guidance:** a three-step "How to use" strip, a "What this demo knows" panel generated from the indexed
+  documents, good-question examples and topic chips, on first visit and after every New conversation.
+- **Curated, always-answerable suggestions:** every example, follow-up and "Did you mean" question comes from a
+  reviewed list, and a test checks each one retrieves its topic and gets a real answer.
+- **Recovery instead of a dead end:** a refused question gets the closest curated questions ("Did you mean"), ranked
+  by keyword retrieval; with nothing close, the most popular questions. Topic chips are always one tap away.
+- **Greetings and off-topic input:** "hi", "thanks" or "what can you do?" get an instant reply with examples and
+  don't use a question; gibberish or unrelated questions get a polite scope message, never a raw refusal.
+- **Follow-ups at no extra cost:** two or three related questions, chosen by the topic of the cited document
+  section. No extra AI call, and never a question already asked.
+- **Why curated, not AI-generated:** a front-desk tool should only suggest questions it is known to answer
+  correctly. Generated suggestions can't be tested in advance, can invent policies, and cost an API call each time.
+"""
+)
 
 st.subheader("Safety and security")
 st.markdown(

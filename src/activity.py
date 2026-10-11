@@ -3,6 +3,7 @@
 import statistics
 from collections import Counter
 
+from src.chat import SOURCES
 from src.display import mask_personal_data
 
 
@@ -14,19 +15,38 @@ def percentile(values: list, p: float) -> float | None:
 
 
 def answered(rows: list) -> list:
-    """Questions that got an answer or a refusal (errors and blocked-by-limit rows excluded)."""
-    return [r for r in rows if not r.get("error")]
+    """Questions that got an answer or a refusal (errors, blocked-by-limit rows and greetings excluded)."""
+    return [r for r in rows if not r.get("error") and r.get("kind") != "greeting"]
+
+
+def source_label(row: dict) -> str:
+    return SOURCES.get(row.get("source") or "typed", "Typed")
 
 
 def insights(usage_rows: list, feedback_rows: list, top: int = 8, gap_limit: int = 25) -> dict:
     rows = answered(usage_rows)
-    topics = Counter(r["topic"] for r in rows if r.get("topic"))
+    topics = Counter(r.get("topic_group") or r["topic"] for r in rows if r.get("topic_group") or r.get("topic"))
+    how_asked = Counter("Typed" if (r.get("source") or "typed") == "typed" else "Suggestion" for r in rows)
+    by_source = Counter(source_label(r) for r in rows)
+    disliked = [
+        {
+            "time": f.get("time", ""),
+            "property": f.get("property", ""),
+            "question": mask_personal_data(f.get("question", ""))[:160],
+            "source": source_label(f),
+            "reason": f.get("reason") or "",
+        }
+        for f in reversed(feedback_rows)
+        if not f.get("helpful") and (f.get("source") or "typed") != "typed"
+    ]
     reasons = Counter(r["reason"] for r in feedback_rows if not r.get("helpful") and r.get("reason"))
     helpful = sum(bool(r.get("helpful")) for r in feedback_rows)
 
     gaps, seen = [], set()
     for r in reversed(rows):  # most recent first
-        if not r.get("refused"):
+        # A policy gap: a typed question Claude said the documents don't answer. Off-topic input stopped by the
+        # scope check (pre_api) and refused suggestions are not policy gaps.
+        if not r.get("refused") or r.get("pre_api") or (r.get("source") or "typed") != "typed":
             continue
         text = mask_personal_data(r.get("question", ""))[:160]
         key = (r.get("property"), text.lower())
@@ -43,6 +63,9 @@ def insights(usage_rows: list, feedback_rows: list, top: int = 8, gap_limit: int
         "topics": topics.most_common(top),
         "by_property": Counter(r.get("property") for r in rows).most_common(),
         "gaps": gaps[:gap_limit],
+        "how_asked": how_asked.most_common(),
+        "by_source": by_source.most_common(),
+        "disliked_suggestions": disliked[:gap_limit],
     }
 
 

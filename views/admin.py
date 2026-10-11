@@ -11,6 +11,7 @@ import streamlit as st
 
 from src.activity import admin_stats
 from src.admin import FAILURE_DELAY_SECONDS, GateState, attempt, sign_out, still_signed_in
+from src.chat import SOURCES
 from src.config import (
     ADMIN_IDLE_MINUTES,
     ALERT_DAILY_COST_USD,
@@ -26,7 +27,18 @@ from src.display import model_name, table_html
 from src.errors import category, errors_file
 from src.feedback import FEEDBACK_FILE
 from src.limits import today_utc
-from src.monitoring import ACTIVITY_COLUMNS, ERROR_COLUMNS, activity, alerts, filter_rows, health, recent_errors, to_csv
+from src.monitoring import (
+    ACTIVITY_COLUMNS,
+    ERROR_COLUMNS,
+    activity,
+    alerts,
+    filter_rows,
+    first_question_success,
+    health,
+    recent_errors,
+    to_csv,
+)
+from src.reports import latest_visitor
 from src.secrets_check import REQUIRED, secret_status
 from src.usage import USAGE_FILE, read_jsonl
 from views import components as ui
@@ -101,6 +113,21 @@ ui.tiles(
         (money(h["cost_today"], 4), "Estimated cost today", f"Warns at ${ALERT_DAILY_COST_USD:.2f}"),
     ]
 )
+fq, visitor = first_question_success(usage), latest_visitor(retriever.mode)
+ui.tiles(
+    [
+        (
+            ui.fmt_pct(fq["rate"]),
+            "First-question success (live)",
+            f"{fq['ok']} of {fq['sessions']} sessions got a cited answer or a greeting reply to their first message",
+        ),
+        (
+            ui.fmt_pct(visitor["first_question_success"] if visitor else None),
+            "First-question success (eval)",
+            f"{visitor['questions']} visitor questions, {visitor['date']}" if visitor else "No visitor eval report yet",
+        ),
+    ]
+)
 st.html(
     '<p class="hoa-secrets"><b>Secrets</b> '
     + " ".join(
@@ -172,6 +199,10 @@ st.dataframe(
     column_config={
         "time": "Time (UTC)",
         "property": "Property",
+        "source": st.column_config.SelectboxColumn(
+            "Asked as", options=list(SOURCES), help="How the question was asked"
+        ),
+        "kind": "Reply",
         "model": "Model",
         "tokens_in": "Tokens in",
         "tokens_out": "Tokens out",

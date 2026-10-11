@@ -119,3 +119,12 @@ def paired(models: list[str], mode: str = "hybrid", reports_dir: Path = REPORTS_
         if all(m in by_size[size] for m in models):
             return {m: by_size[size][m] for m in models}
     return {}
+
+
+def latest_visitor(mode: str = "keyword", baseline: bool = False, reports_dir: Path = REPORTS_DIR) -> dict | None:
+    """The newest answered visitor-question eval summary (eval/run_visitor_eval.py writes the JSON)."""
+    import json
+
+    suffix = "_answers_baseline.json" if baseline else "_answers.json"
+    paths = sorted(Path(reports_dir).glob(f"*_visitor_{mode}{suffix}"))
+    return json.loads(paths[-1].read_text("utf-8")) if paths else None

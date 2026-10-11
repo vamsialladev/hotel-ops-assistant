@@ -10,6 +10,15 @@ import uuid
 from dataclasses import dataclass, field
 
 FEEDBACK_REASONS = ("Wrong fact", "Missing information", "Wrong property", "Unclear", "Other")
+# How a question was asked, logged with each question and rating (Insights: "How people ask").
+SOURCES = {
+    "typed": "Typed",
+    "example": "Good-question example",
+    "topic": "Topic example",
+    "follow_up": "Follow-up",
+    "did_you_mean": "Did you mean",
+    "popular": "Popular question",
+}
 
 WHITESPACE = re.compile(r"\s+")
 
@@ -43,21 +52,35 @@ class Turn:
     error: str | None = None  # friendly message shown instead of an answer
     feedback: str | None = None  # None, "up", "down_pending", "down"
     reason: str | None = None
+    kind: str = "answer"  # answer | refusal | scope | greeting (set when the reply is ready)
+    source: str = "typed"  # a key of SOURCES
+    suggestions: list = field(default_factory=list)  # questions offered under the reply
+    suggestion_label: str = ""  # follow_up | did_you_mean | popular | examples
+    first: bool = False  # the session's first message
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
 
 
 @dataclass
 class ChatState:
     histories: dict = field(default_factory=dict)  # property -> list[Turn]
-    asked: int = 0  # questions this session, across properties
+    asked: int = 0  # questions this session, across properties (greetings don't count)
+    messages: int = 0  # everything sent this session, greetings included
+    session_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
 
     def history(self, prop: str) -> list:
         return self.histories.setdefault(prop, [])
 
-    def add(self, turn: Turn) -> Turn:
+    def add(self, turn: Turn, counted: bool = True) -> Turn:
+        """Greetings and thanks pass counted=False: they don't use a question from the demo limits."""
+        turn.first = self.messages == 0
         self.history(turn.property).append(turn)
-        self.asked += 1
+        self.messages += 1
+        self.asked += 1 if counted else 0
         return turn
+
+    def questions(self, prop: str) -> list[str]:
+        """Questions asked in this property's conversation, so suggestions never repeat one."""
+        return [t.question for t in self.history(prop)]
 
     def clear(self, prop: str) -> list[str]:
         """'New conversation': clears this property's history and returns the removed turn ids (so the page

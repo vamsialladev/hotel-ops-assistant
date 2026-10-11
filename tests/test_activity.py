@@ -72,8 +72,9 @@ def test_insights_counts_topics_feedback_and_policy_gaps():
     assert out["questions"] == 4 and out["refused"] == 2
     assert out["topics"] == [("Pets", 2)]
     assert out["helpful_rate"] == 0.25 and out["reasons"] == [("Wrong fact", 2)]
-    # Refused questions are deduplicated, newest first, with personal data masked.
-    assert [g["question"] for g in out["gaps"]] == ["babysitting? mail me at [email]"]
+    # Policy gaps: typed questions Claude said the documents don't cover, with personal data masked. The
+    # off-topic row stopped by the scope check (pre_api) is not a policy gap.
+    assert [g["question"] for g in out["gaps"]] == ["Babysitting? mail me at [email]"]
 
 
 def test_insights_empty_state():
@@ -94,3 +95,26 @@ def test_admin_stats():
 
 def test_percentile_ignores_missing_values():
     assert percentile([None, 1.0, 3.0, 2.0], 0.5) == 2.0 and percentile([None], 0.95) is None
+
+
+def test_insights_how_people_ask_and_disliked_suggestions():
+    usage = [
+        {"question": "hi", "kind": "greeting", "source": "typed"},
+        {"question": "Dogs?", "kind": "answer", "source": "typed", "topic": "Pets", "topic_group": "Pets"},
+        {"question": "Pool hours?", "kind": "answer", "source": "topic", "topic": "Pool and Beach"},
+        {"question": "Spa?", "kind": "answer", "source": "follow_up", "topic_group": "Spa"},
+        {"question": "Typed gap", "kind": "refusal", "refused": True, "pre_api": False, "source": "typed"},
+        {"question": "Suggested gap", "kind": "refusal", "refused": True, "pre_api": False, "source": "did_you_mean"},
+        {"question": "asdfgh", "kind": "scope", "refused": True, "pre_api": True, "source": "typed"},
+    ]
+    feedback = [
+        {"question": "Spa?", "helpful": False, "reason": "Unclear", "source": "follow_up"},
+        {"question": "Dogs?", "helpful": False, "reason": "Wrong fact", "source": "typed"},
+    ]
+    out = insights(usage, feedback)
+    assert out["questions"] == 6  # the greeting isn't a question
+    assert dict(out["how_asked"]) == {"Typed": 3, "Suggestion": 3}
+    assert ("Follow-up", 1) in out["by_source"] and ("Topic example", 1) in out["by_source"]
+    assert dict(out["topics"]) == {"Pets": 1, "Pool and Beach": 1, "Spa": 1}
+    assert [g["question"] for g in out["gaps"]] == ["Typed gap"]
+    assert [(s["question"], s["source"]) for s in out["disliked_suggestions"]] == [("Spa?", "Follow-up")]

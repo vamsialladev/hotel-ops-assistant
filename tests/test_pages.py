@@ -14,12 +14,15 @@ from streamlit.testing.v1 import AppTest
 
 import src.errors as errors
 import src.feedback as feedback
+import src.generate
 import src.usage as usage
 from src.admin import GateState
 from src.chat import ChatState, Turn
 from src.config import ROOT
 from src.errors import PAGE_ERROR
+from src.generate import NOT_FOUND
 from src.retrieve import Retriever
+from src.suggestions import load_catalog
 from src.usage import read_jsonl
 from views import components
 
@@ -119,3 +122,129 @@ def test_admin_health_shows_missing_secrets_by_name_only(app, monkeypatch):
     assert "ANTHROPIC_API_KEY: missing" in text and "ADMIN_PASSWORD: set" in text
     assert any("Required secret ANTHROPIC_API_KEY is missing" in w.value for w in at.warning)
     assert "test-only-password" not in text + " ".join(w.value for w in at.warning)
+
+
+# ---------- welcome screen, guidance and suggestions (no API: Claude's stream is replaced) ----------
+class FakeStream:
+    """Stands in for AnswerStream: answers from the first retrieved passage, or refuses."""
+
+    text = "Dogs up to 40 lbs are welcome [1]."
+
+    def __init__(self, question, prop, chunks, *args, **kwargs):
+        self.chunks, self.result, self.time_to_first_token, self.total_time = chunks, None, 0.1, 0.2
+
+    def __iter__(self):
+        yield self.text
+        found = self.text != NOT_FOUND
+        self.result = {
+            "answer": self.text,
+            "found": found,
+            "citations": [{**self.chunks[0], "n": 1}] if found else [],
+            "usage": {"input_tokens": 10, "output_tokens": 5},
+        }
+
+
+@pytest.fixture
+def chat_app(app, monkeypatch):
+    from src.limits import DailyCounter
+
+    at, logs = app
+    monkeypatch.setattr(components, "daily_counter", lambda: DailyCounter(logs / "daily.json", 200))
+    monkeypatch.setattr(src.generate, "AnswerStream", FakeStream)
+    return at, logs
+
+
+def welcome_text(at) -> str:
+    return html_text(at) + " ".join(e.value for e in at.markdown)
+
+
+def focus_scripts(at) -> list[str]:
+    return [str(e.proto.srcdoc) for e in at.sidebar.get("iframe") if "stChatInputTextArea" in str(e.proto.srcdoc)]
+
+
+@pytest.mark.parametrize("prop", ["beach-resort", "mountain-lodge"])
+def test_welcome_screen_guides_a_first_time_visitor(app, prop):
+    at, _ = app
+    at.run()
+    at.session_state["property"] = prop
+    at.run()
+    text = welcome_text(at)
+    assert "Pick your property" in text and "Tap a topic or type your question" in text
+    assert "What this demo knows at" in text and "can&rsquo;t make bookings" in text
+    assert "Good questions look like" in text and "one policy question at a time" in text
+    assert [at.button(key=f"good_{prop}_{i}").label for i in range(3)] == load_catalog().good[prop]
+    assert at.get("button_group")  # topic chips
+    assert at.chat_input(key="chat_input").placeholder.startswith("Try: ")
+    assert "Don't enter guest names or personal details" in html_text(at)
+
+
+def test_typing_bug_regression_new_conversation_shows_welcome_and_frees_the_input(chat_app):
+    """Found on the live app: on a phone, the sidebar stayed open over the chat input after "New conversation",
+    so taps never reached it. Now the page closes an overlaying sidebar and focuses the input."""
+    at, _ = chat_app
+    at.run()
+    at.button(key="good_beach-resort_0").click().run()
+    assert at.sidebar.button(key="new_conversation").disabled is False
+    at.sidebar.button(key="new_conversation").click().run()
+    assert "Good questions look like" in welcome_text(at) and not at.chat_message
+    script = focus_scripts(at)[-1]
+    assert 'stSidebarCollapseButton"] button' in script and "if (true && overlay" in script
+    assert not at.chat_input(key="chat_input").proto.disabled
+    at.chat_input(key="chat_input").set_value("Can a guest bring their dog?").run()  # typing works again
+    assert at.chat_message[0].markdown[0].value == "Can a guest bring their dog?"
+
+
+def test_example_click_is_asked_as_the_users_question_counted_and_logged_with_its_source(chat_app):
+    at, logs = chat_app
+    at.run()
+    at.button(key="good_beach-resort_0").click().run()
+    assert at.chat_message[0].markdown[0].value == "Can a guest bring their dog?"
+    assert "19 of 20" in at.sidebar.caption[0].value
+    record = read_jsonl(logs / "usage.jsonl")[-1]
+    assert (record["source"], record["kind"], record["first"]) == ("example", "answer", True)
+    assert focus_scripts(at)  # the input is focused after the answer
+
+
+def test_answer_shows_follow_ups_that_ask_with_their_source(chat_app):
+    at, logs = chat_app
+    at.run()
+    at.chat_input(key="chat_input").set_value("Can a guest bring their dog?").run()
+    assert "Related questions" in [m.value for m in at.markdown] or any(
+        "Related questions" in m.value for m in at.markdown
+    )
+    follow = [b for b in at.button if b.key and b.key.startswith("sugg_")]
+    assert 2 <= len(follow) <= 3 and all(b.label != "Can a guest bring their dog?" for b in follow)
+    follow[0].click().run()
+    assert read_jsonl(logs / "usage.jsonl")[-1]["source"] == "follow_up"
+
+
+def test_greeting_is_instant_free_and_offers_questions(chat_app):
+    at, logs = chat_app
+    at.run()
+    at.chat_input(key="chat_input").set_value("hi").run()
+    reply = at.chat_message[1]
+    assert "Hi!" in reply.markdown[0].value and "20 of 20" in at.sidebar.caption[0].value  # not counted
+    assert len([b for b in reply.button if b.key.startswith("sugg_")]) == 3
+    assert read_jsonl(logs / "usage.jsonl")[-1]["kind"] == "greeting"
+
+
+def test_gibberish_gets_a_polite_scope_message_popular_questions_and_topics(chat_app):
+    at, _ = chat_app
+    at.run()
+    at.chat_input(key="chat_input").set_value("asdfgh").run()
+    reply = at.chat_message[1]
+    text = " ".join(m.value for m in reply.markdown)
+    assert "can't answer that from this hotel's documents" in text and "popular questions" in text
+    assert len([b for b in reply.button if b.key.startswith("sugg_")]) == 3 and reply.get("button_group")
+
+
+def test_refusal_shows_did_you_mean_and_topics_never_follow_ups(chat_app, monkeypatch):
+    at, logs = chat_app
+    monkeypatch.setattr(FakeStream, "text", NOT_FOUND)
+    at.run()
+    at.chat_input(key="chat_input").set_value("Can you book me a room for Friday?").run()
+    reply = at.chat_message[1]
+    text = " ".join(m.value for m in reply.markdown)
+    assert "can't answer that from this hotel's documents" in text and "Did you mean:" in text
+    assert "Related questions" not in text and reply.get("button_group")
+    assert read_jsonl(logs / "usage.jsonl")[-1]["kind"] == "refusal"

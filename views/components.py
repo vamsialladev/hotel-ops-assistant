@@ -13,7 +13,7 @@ import streamlit as st
 
 from src.branding import DEMO_LABEL, load_branding
 from src.chat import ChatState
-from src.config import INDEX_DIR, LOG_DIR, MAX_QUESTIONS_PER_DAY, ROOT, USE_EMBEDDINGS
+from src.config import LOG_DIR, MAX_QUESTIONS_PER_DAY, ROOT, USE_EMBEDDINGS
 from src.display import esc
 from src.errors import PAGE_ERROR, is_control_flow, record_error
 from src.limits import DailyCounter
@@ -28,13 +28,21 @@ def brand():
     return load_branding()
 
 
-@st.cache_resource(show_spinner="Starting up the assistant. The first load can take up to a minute.")
 def retriever():
-    from src.ingest import build_index
+    """The search index for the current documents. Keyed by their fingerprint, so a push that changes a
+    document rebuilds the index without a reboot (Streamlit Cloud keeps the old one on disk)."""
+    from src.ingest import docs_fingerprint
+
+    return _retriever(docs_fingerprint(USE_EMBEDDINGS))
+
+
+@st.cache_resource(show_spinner="Starting up the assistant. The first load can take up to a minute.")
+def _retriever(fingerprint: str):
+    from src.ingest import build_index, index_is_current
     from src.retrieve import Retriever
 
-    # The index isn't committed to git, so it's built on first start (e.g. on Streamlit Cloud).
-    if not (INDEX_DIR / "chunks.json").exists():
+    # The index isn't committed to git, so it's built on first start and whenever the documents change.
+    if not index_is_current(USE_EMBEDDINGS):
         build_index(use_embeddings=USE_EMBEDDINGS)
     return Retriever(use_embeddings=USE_EMBEDDINGS)
 
@@ -101,13 +109,39 @@ def chat_state() -> ChatState:
 
 def scroll_to_top():
     """Scroll the page back to the top (Streamlit keeps chat pages scrolled to the bottom)."""
-    from streamlit.components.v1 import html
-
-    html(
+    # A fixed script, never user input (st.iframe runs it with access to the app page).
+    st.iframe(
         "<script>const d = window.parent.document; d.querySelectorAll('*').forEach("
         "el => { if (el.scrollTop > 0) el.scrollTop = 0; }); window.parent.scrollTo(0, 0);</script>",
-        height=0,
+        height=1,
     )
+
+
+FOCUS_SCRIPT = """<script>/* {nonce} */
+const d = window.parent.document, w = window.parent;
+const sidebar = d.querySelector('[data-testid="stSidebar"]');
+const overlay = w.matchMedia("(max-width: 767px)").matches;  // phones: the sidebar covers the page
+if ({close} && overlay && sidebar && sidebar.getAttribute("aria-expanded") === "true") {{
+  // The button itself: clicking its wrapper div does nothing.
+  const b = d.querySelector('[data-testid="stSidebarCollapseButton"] button')
+    || d.querySelector('[data-testid="stSidebarCollapseButton"]');
+  if (b) b.click();
+}}
+const touch = w.matchMedia("(pointer: coarse)").matches;
+if (!touch || {close}) setTimeout(() => {{
+  const box = d.querySelector('[data-testid="stChatInputTextArea"]');
+  if (box && !box.disabled) box.focus({{preventScroll: true}});
+}}, 300);
+</script>"""
+
+
+def focus_chat_input(close_sidebar: bool = False):
+    """Put the cursor in the chat input. With close_sidebar (after "New conversation"), first close the
+    sidebar when it covers the page on a phone: it stayed open over the input, so taps never reached it.
+    After an answer, phones are left alone so the keyboard doesn't cover the answer."""
+    nonce = st.session_state["focus_nonce"] = st.session_state.get("focus_nonce", 0) + 1  # re-runs the script
+    with st.sidebar:  # a fixed script, never user input
+        st.iframe(FOCUS_SCRIPT.format(nonce=nonce, close="true" if close_sidebar else "false"), height=1)
 
 
 def inject_css():

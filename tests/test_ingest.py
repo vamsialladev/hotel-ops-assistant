@@ -38,3 +38,33 @@ def test_scanned_pdf_is_skipped_not_indexed_as_garbage():
 
 def test_footer_normalization():
     assert normalize_line("Page 1 of 3") == normalize_line("Page 2 of 3")
+
+
+def test_index_fingerprint_changes_with_documents_and_mode(tmp_path):
+    from src.ingest import docs_fingerprint, index_is_current
+
+    raw = tmp_path / "raw"
+    (raw / "shared").mkdir(parents=True)
+    doc = raw / "shared" / "a.md"
+    doc.write_text("# A\nOne", encoding="utf-8")
+    first = docs_fingerprint(False, raw)
+    assert first == docs_fingerprint(False, raw) and first != docs_fingerprint(True, raw)
+    doc.write_text("# A\nTwo", encoding="utf-8")
+    assert docs_fingerprint(False, raw) != first
+
+    index = tmp_path / "index"
+    index.mkdir()
+    assert not index_is_current(False, index, raw)  # nothing built yet
+    (index / "chunks.json").write_text("[]", encoding="utf-8")
+    (index / "fingerprint.txt").write_text(docs_fingerprint(False, raw), encoding="utf-8")
+    assert index_is_current(False, index, raw) and not index_is_current(True, index, raw)
+    (raw / "shared" / "b.md").write_text("# B\nNew", encoding="utf-8")
+    assert not index_is_current(False, index, raw)  # a pushed document triggers a rebuild
+
+
+def test_the_built_index_is_current_and_drops_stale_vectors():
+    from src.config import INDEX_DIR
+    from src.ingest import index_is_current
+
+    assert index_is_current(False)  # conftest built a keyword-only index
+    assert not (INDEX_DIR / "vectors.npy").exists()

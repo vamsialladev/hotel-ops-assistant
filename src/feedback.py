@@ -14,14 +14,16 @@ def log_feedback(
     prop: str,
     result: dict,
     helpful: bool,
-    path: Path = FEEDBACK_FILE,
+    path: Path | None = None,
     reason: str | None = None,
     turn_id: str | None = None,
+    source: str = "typed",
 ) -> dict:
     record = {
         "time": now_iso(),
         "turn_id": turn_id,
         "property": prop,
+        "source": source,
         "question": question,
         "answer": result["answer"],
         "found": result["found"],
@@ -29,7 +31,7 @@ def log_feedback(
         "helpful": helpful,
         "reason": reason if (not helpful and reason in FEEDBACK_REASONS) else None,
     }
-    append_jsonl(path, record)
+    append_jsonl(path or FEEDBACK_FILE, record)  # FEEDBACK_FILE read at call time, so tests can redirect it
     return record
 
 

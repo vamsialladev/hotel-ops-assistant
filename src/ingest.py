@@ -3,6 +3,7 @@
 Run:  python -m src.ingest
 """
 
+import hashlib
 import json
 import re
 from collections import Counter
@@ -183,8 +184,27 @@ def load_chunks():
     return [asdict(c) for c in chunks]
 
 
+def docs_fingerprint(use_embeddings: bool, raw_dir: Path = RAW_DIR) -> str:
+    """Changes whenever a document is added, removed or edited, or the search mode changes. Stored with the
+    index, so a running app (Streamlit Cloud keeps its files between pushes) knows to rebuild."""
+    digest = hashlib.sha256(f"embeddings={use_embeddings}".encode())
+    for path in sorted(p for p in Path(raw_dir).rglob("*") if p.is_file()):
+        digest.update(path.relative_to(raw_dir).as_posix().encode() + b"|" + path.read_bytes())
+    return digest.hexdigest()
+
+
+def index_is_current(use_embeddings: bool, index_dir: Path = INDEX_DIR, raw_dir: Path = RAW_DIR) -> bool:
+    stamp = Path(index_dir) / "fingerprint.txt"
+    return (
+        (Path(index_dir) / "chunks.json").exists()
+        and stamp.exists()
+        and stamp.read_text(encoding="utf-8").strip() == docs_fingerprint(use_embeddings, raw_dir)
+    )
+
+
 def build_index(use_embeddings: bool = True):
     print(f"Reading documents from {RAW_DIR}")
+    requested = use_embeddings
     chunks = load_chunks()
     INDEX_DIR.mkdir(parents=True, exist_ok=True)
     (INDEX_DIR / "chunks.json").write_text(json.dumps(chunks, indent=2), encoding="utf-8")
@@ -200,6 +220,9 @@ def build_index(use_embeddings: bool = True):
         model = SentenceTransformer(EMBED_MODEL)
         vectors = model.encode([contextual_text(c) for c in chunks], normalize_embeddings=True, show_progress_bar=True)
         np.save(INDEX_DIR / "vectors.npy", vectors)
+    else:  # vectors from an older build no longer match these chunks
+        (INDEX_DIR / "vectors.npy").unlink(missing_ok=True)
+    (INDEX_DIR / "fingerprint.txt").write_text(docs_fingerprint(requested), encoding="utf-8")
 
     by_prop = Counter(c["property"] for c in chunks)
     print(f"Indexed {len(chunks)} chunks: {dict(by_prop)}")
