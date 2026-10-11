@@ -385,8 +385,11 @@ def narration_cues(timeline: dict) -> list[tuple[float, float, str]]:
     return cues
 
 
+VTT_POSITION = "line:6% position:50% align:center"  # top of the frame: the burned-in captions are at the bottom
+
+
 def webvtt(cues) -> str:
-    return "WEBVTT\n\n" + "\n".join(f"{vtt_time(a)} --> {vtt_time(b)}\n{text}\n" for a, b, text in cues)
+    return "WEBVTT\n\n" + "\n".join(f"{vtt_time(a)} --> {vtt_time(b)} {VTT_POSITION}\n{text}\n" for a, b, text in cues)
 
 
 def script_text(cues) -> str:

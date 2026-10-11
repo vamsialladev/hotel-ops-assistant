@@ -68,8 +68,8 @@ def test_narration_cues_follow_each_line_and_keep_sentences_whole():
 def test_webvtt_and_script_text():
     cues = [(0.4, 2.5, "Hello."), (65.0, 67.25, "Second line.")]
     vtt = record_demo.webvtt(cues)
-    assert vtt.startswith("WEBVTT\n\n00:00:00.400 --> 00:00:02.500\nHello.")
-    assert "00:01:05.000 --> 00:01:07.250\nSecond line." in vtt
+    assert vtt.startswith("WEBVTT\n\n00:00:00.400 --> 00:00:02.500 line:6% position:50% align:center\nHello.")
+    assert "00:01:05.000 --> 00:01:07.250 line:6% position:50% align:center\nSecond line." in vtt
     assert "[1:05.0] Second line." in record_demo.script_text(cues)
 
 
