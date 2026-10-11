@@ -2,6 +2,28 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.5.0] - 2026-10-11
+### Added
+- **Complete request log** (schema version 2): one record per request, whether answered, refused, off-topic,
+  greeting, error or cap (the session limit is now logged too). Each record has a request ID, an anonymous session
+  ID, the outcome and refusal reason, the full answer, citations, follow-ups shown, every retrieved passage with
+  its score and whether it was cited, timing, tokens, cost, grounding flags and a short safe error message.
+  👍 / 👎 ratings carry the same request ID.
+- **Admin request list:** one table, newest first, with colored result badges, filters (date range, property,
+  result, feedback, errors only, question text), "Showing X of Y requests" and "Load more".
+- **Request details:** selecting a row opens a dialog with Summary, Answer, Sources, Performance, Checks,
+  Feedback and Raw tabs, plus "Download this request (JSON)".
+- **Log downloads:** "Download usage log (JSONL)" and "Download feedback log (JSONL)" (Admin only), under a
+  "Log since … · Logs reset when the app restarts" note.
+
+### Changed
+- Every log record is masked for secret values and Anthropic-key shapes before it's written, including text a
+  visitor types.
+- Records from older versions get an outcome and a stable ID; anything missing shows "not recorded".
+- The activity table and "Recent questions" are replaced by the request list. The privacy page says questions and
+  answers are logged for quality and kept only until the app restarts, and that no names or accounts are collected.
+- README author line uses the current title.
+
 ## [1.4.0] - 2026-10-10
 ### Added
 - **In-app guidance** on the welcome screen (first visit and after every New conversation, both properties): a

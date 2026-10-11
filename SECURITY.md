@@ -9,20 +9,28 @@ per-property access is planned for Project 4.
 - **Not indexed:** guest records, payment data, reservations. The assistant answers policy questions; it can't look up guests.
 - **Sent to the Claude API per question:** the question and the top 5 matching passages. Earlier turns are never sent.
 - **Logged on the app server (git-ignored, never committed):**
-  - `data/usage.jsonl`: time, property, model, retrieval mode, the question as typed, tokens in/out, estimated cost,
-    time to first word, total time, refused or not, grounding flag, manager notes, retrieved passages and scores,
-    error code.
-  - `data/feedback.jsonl`: 👍 / 👎, the optional reason, the question and answer.
+  - `data/usage.jsonl`: one record per request (answered, refused, off-topic, greeting, error or cap): request ID,
+    time, an anonymous random session ID (not tied to a person), property, the question as typed, outcome and
+    refusal reason, the full answer, citations, follow-ups shown, retrieved passages with scores and whether each
+    was cited, model, retrieval mode, tokens in/out, estimated cost, time to first word, total time, grounding
+    flag, manager notes, error code and a short safe error message (no traceback).
+  - `data/feedback.jsonl`: 👍 / 👎, the optional reason, the question and answer, linked to the request by its ID.
   - `data/daily_count.json`: today's question count for the daily cap.
   - `data/errors.jsonl`: caught errors for the Admin page: time, page, error type and a short message (masked for
     anything that looks like a key, at most 160 characters). No question text and no traceback.
 - **Logged to stdout** (Streamlit Cloud's owner-only logs): the same usage record **without the question text**.
-- **Never logged anywhere:** the API key, the admin password or any other secret.
+- **Never logged anywhere:** the API key, the admin password or any other secret. Every record passes through
+  `src/usage.redact` before it's written, which masks the configured secret values and anything shaped like an
+  Anthropic key, even if a visitor pastes one into a question.
+- **Who can see it:** only the owner, on the password-protected Admin page (lockout and 30-minute auto sign-out).
+  No log data, request IDs or downloads appear on any visitor page.
 
 ## Log retention
 - Usage, feedback and error logs keep only the **most recent 5,000 entries** (`LOG_MAX_ENTRIES`); older lines are trimmed
   on every write.
-- On Streamlit Community Cloud the files are deleted whenever the app restarts or redeploys.
+- On Streamlit Community Cloud the files live on temporary disk and are deleted whenever the app restarts. The
+  Admin page shows "Log since …" and offers JSONL downloads to keep a copy. A persistent store with a retention
+  policy and a log viewer is Project 4 (decision 50).
 - Questions are stored **as typed**. The input box and the privacy note ask visitors not to enter guest names or
   personal details, but nothing stops them. Personal-data redaction before logging and before API calls is planned
   for Project 4. Until then, the public Insights page masks emails, card-like numbers and phone numbers in refused
@@ -73,7 +81,8 @@ per-property access is planned for Project 4.
 - **Personal-data redaction** of questions before they're logged or sent to the API.
 - **Prompt-injection screening** of new or changed documents before indexing, plus an LLM judge (Project 3)
   calibrated against human labels for "did the answer follow an injected instruction?".
-- **Durable, access-controlled log storage** with an explicit retention period, instead of local files.
+- **Durable, access-controlled log storage** with an explicit retention period and a log viewer, instead of
+  local files on temporary disk.
 - **Per-IP rate limiting** at the hosting layer.
 
 ## Public deploy checklist

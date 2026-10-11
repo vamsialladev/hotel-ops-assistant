@@ -347,3 +347,30 @@ The 54-question eval shows no regression: keyword-only 96% → 98% (retrieval 43
 - **Labels:** "Narration: AI voice" appears on the end card and under the video.
 - **Muted viewers:** burned-in captions stay. `--no-voice` turns narration off.
 **Tradeoff:** An AI voice is less personal than mine. The script makes a human take easy later.
+
+## 50. A complete request log with click-to-view details, kept honest about where it lives
+**Context:** The Admin page's "Recent questions" showed a title line and, inside, only the question and one summary
+line. The log never stored the answer, citations or follow-ups, so a request answered without the API (greeting,
+off-topic, daily cap) had nothing else to show, and greetings were labelled "refused". The session limit wasn't logged
+at all. The owner couldn't see what a visitor actually got.
+**Decision:**
+- **One complete record per request** (schema version 2): request ID, anonymous session ID, outcome (answered,
+  refused, off-topic, greeting, error, cap) and refusal reason, the full answer, citations, follow-ups shown, every
+  retrieved passage with its score and whether it was cited, timing, tokens, cost, grounding flags and a short safe
+  error message. Feedback links by request ID.
+- **Secrets can't reach a log:** every record is masked for the configured secret values and Anthropic-key shapes
+  before it's written, including text a visitor types.
+- **Older records** get an outcome worked out from their old fields and a stable ID; anything they lack shows
+  "not recorded", never a blank or a crash.
+- **Admin:** one table (newest first, colored result badges, filters, "Showing X of Y", load more) replaces both
+  the activity table and Recent questions; selecting a row opens a details dialog with tabs and a JSON download.
+- **Persistence stays honest:** logs remain on Streamlit Cloud's temporary disk; the page says "Logs reset when the
+  app restarts" and offers JSONL downloads.
+**Tradeoff:** Answers make each record a few KB, and the log is still lost on restart. A persistent store with a
+retention policy and a log viewer is Project 4; until then, downloads are the backup.
+**Result:** Tested for every request type end to end through the real page, plus older and damaged records,
+feedback linking, secret masking, filters, row selection opening the right record, and downloads only behind the
+Admin password. The two early mountain-lodge entries that showed only a header line can't be read without signing
+in to the live Admin page; reproducing every record type locally showed none crashes, so the likely cause is the
+old view having nothing more to show for them. The new Raw tab shows exactly what any record contains.
+

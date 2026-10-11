@@ -80,7 +80,8 @@ sequenceDiagram
 | Reload guard | `codeguard.py` | After an in-place update, drops changed `src/`, `views/` and `eval/` modules so they're imported fresh together; the index rebuilds when the documents' fingerprint changes |
 | Secrets check | `src/secrets_check.py`, `scripts/make_secrets.py` | Report each secret as set or missing (never a value), log missing ones at startup, build `.streamlit/secrets.toml` from `.env` |
 | Admin gate | `src/admin.py` | Constant-time password check, failure delay, lockout, sign out, idle auto-lock |
-| Monitoring | `src/monitoring.py` | Health, threshold warnings, activity table, filters, CSV export for the Admin page |
+| Monitoring | `src/monitoring.py` | Health, threshold warnings, recent errors, CSV export for the Admin page |
+| Request log | `src/requestlog.py` | Outcome and refusal reason for every record (older ones included), the Admin list, filters, row selection, request details with "not recorded" for missing fields, JSON/JSONL downloads |
 | Safe file writes | `src/fileio.py` | Retries Windows file-sharing collisions so logs and the counter never crash a page |
 | Error boundary | `views/components.py` | Wraps every page and callback: friendly message, error recorded, no crash screen |
 | Display | `src/display.py` | HTML and `$` escaping, source chips, badges, tables, bar lists |
@@ -88,7 +89,27 @@ sequenceDiagram
 | Pages | `app.py`, `views/` | Thin Streamlit pages; no logic beyond wiring |
 | CLI | `ask.py` | Quick command-line questions |
 | Evaluation | `eval/run_eval.py`, `eval/metrics.py`, `eval/questions.jsonl` | 54 questions; strict retrieval, answers, grounding, refusals, scope, escalation, latency, cost |
-| Tests | `tests/` | 274 tests, including every page rendered with `AppTest`; no API key or PyTorch needed |
+| Tests | `tests/` | 307 tests, including every page rendered with `AppTest`; no API key or PyTorch needed |
+
+## Request log record
+One JSON line per request in `data/usage.jsonl` (schema version 2, written by `service.usage_record`, masked by
+`usage.redact`). Ratings in `data/feedback.jsonl` carry the same `request_id`.
+
+| Field | Meaning |
+|---|---|
+| `schema_version` | 2 (records without it are version 1: no answer, citations, follow-ups or outcome) |
+| `request_id` (and `turn_id`) | Short unique ID; feedback links to it |
+| `time` | UTC, ISO 8601 |
+| `session_id` | Anonymous random ID per browser session, not tied to a person |
+| `property`, `question`, `source` | Which hotel, the question as typed, and how it was asked (typed, example, follow-up…) |
+| `outcome` | `answered`, `refused`, `off_topic`, `greeting`, `error` or `cap` |
+| `refusal_reason` | `not_in_documents`, `off_topic`, `daily_cap` or `session_cap` |
+| `answer`, `citations`, `follow_ups` | Full answer text, the passages it cited (`n`, source, section), the questions offered under it |
+| `retrieved` | Every passage retrieved: source, section, score, `cited` |
+| `model`, `mode`, `ttft_s`, `total_s` | Model (none when no API call), search mode, first-word and total time |
+| `tokens_in`, `tokens_out`, `cost_usd` | Token counts and the estimated cost from the configured prices |
+| `grounding_flag`, `ungrounded`, `escalations` | Numbers not found in the cited sources; manager notes |
+| `error`, `error_message` | Error code and a short masked message (no traceback, no secrets) |
 
 ## Deployment modes
 | | Streamlit Community Cloud (live demo) | Docker (local or always-on host) |
@@ -100,7 +121,7 @@ sequenceDiagram
 | Logs | Reset when the app restarts | Persist for the container's life (mount a volume to keep them) |
 
 ## Key design choices
-See [DECISIONS.md](DECISIONS.md) for all 39. In short:
+See [DECISIONS.md](DECISIONS.md) for all 50. In short:
 - **Hybrid search**, because staff use exact terms (prices, airport codes) and loose phrasing; keyword-only where memory is tight.
 - **Property filter before search**, because a correct answer from the wrong hotel is still wrong.
 - **Refuse rather than guess, and refuse off-topic questions for free.**

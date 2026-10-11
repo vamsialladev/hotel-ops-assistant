@@ -6,7 +6,7 @@ Every image here is real output from this repo. Regenerate them after changes so
 | File | Shows | How to regenerate |
 |---|---|---|
 | `eval-retrieval.png` | 54-question eval, hybrid: retrieval, scope and escalation checks | `python -m eval.run_eval > out.txt`, then `python scripts/render_terminal.py out.txt docs/images/eval-retrieval.png --command "python -m eval.run_eval" --title "hotel-ops-assistant: retrieval, scope and escalation eval (hybrid)"` |
-| `tests.png` | `pytest` with coverage: 274 passed, 97% | `python -m pytest -q --cov=src --cov=eval > out.txt`, then render as above |
+| `tests.png` | `pytest` with coverage: 307 passed, 97% | `python -m pytest -q --cov=src --cov=eval > out.txt`, then render as above |
 | `business-case.png` | Calculator scenarios, 100 properties (projection) | `python scripts/business_case.py --scenarios --properties 100 --hosting 15000 > out.txt`, then render |
 
 ## App screenshots (captured from the running app with real questions)
@@ -35,3 +35,15 @@ For a design review of every page in both modes and both widths: `python scripts
 - Only real answers and real usage; no made-up data
 - Text is readable without zooming
 - PNG under 1 MB where possible, GIF under 5 MB
+
+## Admin request log (`request-log/`, captured from a local run with real answers)
+| File | Shows |
+|---|---|
+| `01-request-list.png`, `02-request-list-filtered.png` | Request list, unfiltered and searched for "dog" |
+| `03`–`09-details-*.png` | Request details dialog: Summary, Answer, Sources, Performance, Checks, Feedback, Raw |
+| `10-details-phone.png` | The dialog at phone width (390 px) |
+
+Run the app locally with a test-only `ADMIN_PASSWORD` set in the environment and a separate `LOG_DIR`, ask a few
+questions (an answer, a refusal, a greeting, an off-topic one), rate two, then sign in to Admin and capture. Never use
+the real admin password for screenshots, and check that no secret value is visible.
+

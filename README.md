@@ -26,7 +26,7 @@
 | **Problem** | Staff search scattered PDFs, menus and notes while a guest waits, and the rules differ by hotel. Wrong answers turn into refunds and complaints. |
 | **Solution** | Pick your property, ask in plain English, and get a 1–4 sentence answer that cites every fact. It refuses when the documents don't say, corrects wrong facts in the question, and points to a manager for refunds and safety. |
 | **Projected value** | ~$32K/yr net for 2 properties (range $8.5K–$66K); ~$1.6M/yr at 100-property scale ([assumptions](docs/BUSINESS_CASE.md)) |
-| **Quality (measured)** | 54-question eval, 3 runs: **98% answer accuracy** on the live demo's keyword-only search (hybrid 97%, runs 96–98%); 100% of escalation rules correct; full answer p95 **2.5–2.7s**; **$0.17–0.19 per 1,000 questions**. **First-question success 100%** on 49 questions a visitor types first (43% before the coverage work). 274 tests, 97% coverage. |
+| **Quality (measured)** | 54-question eval, 3 runs: **98% answer accuracy** on the live demo's keyword-only search (hybrid 97%, runs 96–98%); 100% of escalation rules correct; full answer p95 **2.5–2.7s**; **$0.17–0.19 per 1,000 questions**. **First-question success 100%** on 49 questions a visitor types first (43% before the coverage work). 307 tests, 97% coverage. |
 
 ## Where to start
 
@@ -73,7 +73,7 @@ Staff have to find the right document for the right hotel while the guest waits.
 
 **For recruiters and engineers:** **How it works** reads the latest real eval report (never hard-coded numbers), shows which retrieval mode the running app uses and its measured accuracy, the architecture, the Haiku 4.5 vs 5.5 comparison, and the safety measures.
 
-**For the owner only:** a password-protected **Admin** page (hidden from visitors): health and recent errors, first-question success (live and from the eval), how each question was asked, warnings when the error rate or cost crosses a threshold, questions today against the daily cap, a filterable activity table with 👍 / 👎, CSV downloads of the logs, sign out and a 30-minute auto-lock. See [Monitoring](#monitoring).
+**For the owner only:** a password-protected **Admin** page (hidden from visitors): health and recent errors, first-question success (live and from the eval), how each question was asked, warnings when the error rate or cost crosses a threshold, questions today against the daily cap, a **request log** listing every request (answered, refused, off-topic, greeting, error, cap) with filters, where selecting a row opens its full details (answer, citations, retrieved passages, timing, cost, checks, feedback, raw JSON), JSONL and CSV downloads of the logs, sign out and a 30-minute auto-lock. See [Monitoring](#monitoring).
 
 <details>
 <summary>More screenshots: document library, how it works, dark mode, phone</summary>
@@ -259,7 +259,7 @@ Every finding is in [DECISIONS.md](docs/DECISIONS.md) with its context, decision
 | Measuring quality, not guessing | [Eval harness](eval/), [Results](#results), raw answers saved per run |
 | Debugging with evidence | [DECISIONS.md](docs/DECISIONS.md) 13–49: grader bugs, the $75 root cause, the Streamlit startup hang, an uninstallable pin, a Windows file race reproduced with two processes, a live-only crash reproduced by updating a running app in place |
 | Shipping a product people can use | In-app guidance tested on first-time visitor questions, multi-page app, streaming, light/dark, phone layout, white-label branding |
-| Production engineering habits | 274 tests, CI with audit and coverage gates, Docker, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
+| Production engineering habits | 307 tests, CI with audit and coverage gates, Docker, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
 | Translating tech into business value | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md), the Insights page for managers |
 
 ## Project structure
@@ -279,7 +279,8 @@ hotel-ops-assistant/
 │   ├── assist.py · intents.py · suggestions.py  # Greetings, recovery, curated follow-ups and topics
 │   ├── scope.py · escalation.py · grounding.py · gaps.py
 │   ├── chat.py · limits.py · usage.py · feedback.py · errors.py · admin.py · fileio.py
-│   ├── monitoring.py       # Health, warnings, activity table and CSV export for the Admin page
+│   ├── monitoring.py       # Health, warnings and CSV export for the Admin page
+│   ├── requestlog.py       # Request log: outcomes, list, filters and details for the Admin page
 │   ├── secrets_check.py    # Secrets set/missing (never values), startup check, secrets.toml builder
 │   └── display.py · branding.py · library.py · activity.py · reports.py
 ├── branding.toml           # White-label: product name, colors, properties, sample questions
@@ -463,16 +464,26 @@ Three places to check, from most to least specific:
 
 | Where | What it shows | How to open it |
 |---|---|---|
-| **Admin page** (this app) | Health (status, model, retrieval mode, uptime, each secret shown as set or missing), questions today vs the daily cap, estimated cost today, the most recent errors with their likely cause, warnings when the error rate or cost crosses a threshold, a filterable activity table with 👍 / 👎, and CSV downloads of the usage, feedback and error logs | https://hotel-ops-assistant.streamlit.app/admin with your `ADMIN_PASSWORD` |
+| **Admin page** (this app) | Health (status, model, retrieval mode, uptime, each secret shown as set or missing), questions today vs the daily cap, estimated cost today, the most recent errors with their likely cause, warnings when the error rate or cost crosses a threshold, the request log (filters by date, property, result, feedback, errors and question text; select a row for the full details), and JSONL and CSV downloads of the usage, feedback and error logs | https://hotel-ops-assistant.streamlit.app/admin with your `ADMIN_PASSWORD` |
 | **Streamlit's "Manage app" logs** | Server output: one line per question (no question text), errors with tracebacks, startup messages | Bottom-right of the live app → **Manage app**, or [share.streamlit.io](https://share.streamlit.io) |
 | **Anthropic Console usage page** | The real API usage and bill (the Admin page only estimates cost) | [console.anthropic.com](https://console.anthropic.com) → Usage |
 
-Streamlit Cloud keeps logs, the error list and the daily counter only until the app restarts, so the Admin page shows recent activity. Persistent monitoring and alerts (e.g. Sentry) and real sign-in with roles and a guest mode are planned for **Project 4**.
+**The request log.** Every request writes one record (schema in [ARCHITECTURE.md](docs/ARCHITECTURE.md#request-log-record)): request ID, time, an anonymous session ID, property, the question, the outcome and refusal reason, the full answer, citations, follow-ups shown, every retrieved passage with its score and whether it was cited, model, search mode, first-word and total time, tokens, estimated cost, grounding flags and a safe error message. 👍 / 👎 ratings link to the request by its ID. Secret values are masked before anything is written. Records from older versions show missing fields as "not recorded".
+
+Streamlit Cloud keeps logs, the error list and the daily counter only until the app restarts, so the Admin page says "Logs reset when the app restarts" and offers JSONL downloads to keep a copy.
+
+<details>
+<summary>Admin request log: the list and a request's details (local run, real answers)</summary>
+<br>
+<img src="docs/images/request-log/01-request-list.png" alt="Admin request list: filters for date range, property, result, feedback, errors and question text, and a table of six requests with colored result badges" width="700">
+<img src="docs/images/request-log/04-details-answer.png" alt="Request details dialog, Answer tab: the full answer with a citation badge for Beach Resort policies, Pets" width="700">
+<img src="docs/images/request-log/05-details-sources.png" alt="Request details dialog, Sources tab: retrieved passages with section, score and a check mark for the cited one" width="700">
+</details> Persistent monitoring and alerts (e.g. Sentry) and real sign-in with roles and a guest mode are planned for **Project 4**.
 
 ## Testing and quality
 
 ```bash
-python -m pytest -q --cov                 # 274 tests, 97% coverage
+python -m pytest -q --cov                 # 307 tests, 97% coverage
 python -m eval.run_eval                    # retrieval, scope and escalation eval (free)
 python -m eval.run_eval --answers --runs 3 --price-in 0.10 --price-out 0.50
 ruff check . && ruff format --check .      # lint and format
@@ -480,16 +491,16 @@ pip-audit -r requirements.txt              # known vulnerabilities
 ```
 
 <details>
-<summary>Test run: 274 passed, 97% coverage</summary>
+<summary>Test run: 307 passed, 97% coverage</summary>
 <br>
-<img src="docs/images/tests.png" alt="pytest output: 274 tests passed with 97% coverage" width="700">
+<img src="docs/images/tests.png" alt="pytest output: 307 tests passed with 97% coverage" width="700">
 </details>
 
 CI runs on the light install (no PyTorch): lint, format check, `pip-audit`, tests with a 70% minimum coverage, a keyword-only retrieval regression gate (fails below 85%), the visitor first-question gate (fails below the measured 100%) and a check that every curated suggestion retrieves its topic. Dependabot opens weekly update pull requests. Before release, a scripted Playwright QA pass clicked through every public page in light and dark mode at laptop and phone width (251 checks: links, text, limits, errors, admin lockout, console errors).
 
 ## Security and privacy
 
-Only synthetic policy documents are indexed; no guest or payment data. Each question and its top 5 passages are sent to the API; earlier turns never are. Secrets stay in `.env` or Streamlit secrets. Questions are logged as typed (git-ignored, newest 5,000 entries), so the app asks visitors not to enter guest details; redaction comes in Project 4. Output is escaped, the public demo has per-session and daily caps, and the Admin page is password-protected with a lockout. [SECURITY.md](SECURITY.md) has the threat model and the OWASP Top 10 for LLM Applications mapping.
+Only synthetic policy documents are indexed; no guest or payment data. Each question and its top 5 passages are sent to the API; earlier turns never are. Secrets stay in `.env` or Streamlit secrets. Questions and answers are logged for quality (git-ignored, newest 5,000 entries, and only until the app restarts on Streamlit Cloud), with secret values masked; no names or accounts are collected. Questions are stored as typed, so the app asks visitors not to enter guest details; personal-data redaction comes in Project 4. Output is escaped, the public demo has per-session and daily caps, and the Admin page is password-protected with a lockout. [SECURITY.md](SECURITY.md) has the threat model and the OWASP Top 10 for LLM Applications mapping.
 
 ## Limitations and roadmap
 
@@ -498,7 +509,8 @@ Only synthetic policy documents are indexed; no guest or payment data. Each ques
 - **Live demo is keyword-only** on the free tier; the jacket and Spanish questions need hybrid.
 - **The eval and visitor questions were written by the same person who wrote the documents**, which flatters the scores; held-out questions from people who haven't seen the documents are on the [validation checklist](docs/VALIDATION_CHECKLIST.md).
 - **Word-list grading** has known false positives; an LLM judge calibrated against human labels is **Project 3**.
-- **Sign-in with roles, personal-data redaction, durable logs and monitoring:** **Project 4**.
+- **Logs live on Streamlit Cloud's temporary disk** and reset whenever the app restarts (the Admin page says so and offers JSONL downloads). **Project 4:** a persistent log store, a retention policy and a log viewer ([decision 50](docs/DECISIONS.md)).
+- **Sign-in with roles, personal-data redaction and monitoring with alerts:** **Project 4**.
 - **Project 2** uses this assistant as a tool in a guest-email agent.
 
 ## Documentation
@@ -507,7 +519,7 @@ Only synthetic policy documents are indexed; no guest or payment data. Each ques
 |---|---|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System and request-flow diagrams, components, scaling path |
 | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md) | Value model, assumptions, policy gaps, pilot plan, KPIs, risks |
-| [DECISIONS.md](docs/DECISIONS.md) | 49 decisions with context, decision, tradeoff and result |
+| [DECISIONS.md](docs/DECISIONS.md) | 50 decisions with context, decision, tradeoff and result |
 | [ENGINEERING_LOG.md](docs/ENGINEERING_LOG.md) | What broke and how it was fixed, in my own words |
 | [DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Word-for-word 2-minute walkthrough (the narrated video follows it) |
 | [VALIDATION_CHECKLIST.md](docs/VALIDATION_CHECKLIST.md) | Steps that need a person: measured baseline, held-out questions |
@@ -521,7 +533,7 @@ Built with AI-assisted development (Claude Code). I defined the requirements and
 
 ## Author
 
-**Vamsi Alla** · AI Engineer · I turn messy business problems into AI systems that work in production: measured, deployed and owned end to end.
+**Vamsi Alla** · Senior Software Engineer · Building production AI systems (LLM, RAG, agents). I turn messy business problems into AI systems that work in production: measured, deployed and owned end to end.
 
 🌐 [Portfolio](https://vamsialla.com) · 💼 [LinkedIn](https://www.linkedin.com/in/vamsi-alla/) · 🐙 [GitHub](https://github.com/vamsialladev) · ✉️ vamsialla.dev@gmail.com
 
