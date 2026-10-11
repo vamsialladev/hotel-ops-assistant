@@ -9,13 +9,13 @@
 
 <p align="center"><img src="docs/images/demo.gif" alt="On the live app, a front-desk agent at Beach Resort clicks 'Can a guest bring their dog?' and a cited answer streams in with its source chip and related questions" width="760"></p>
 <p align="center"><em>The live app: one click on a suggested question, a cited answer from the hotel's own policy in about two seconds.</em></p>
-<p align="center"><strong><a href="https://vamsialladev.github.io/projects/hotel-ops-assistant.html#demo">▶ Watch the full 2-minute demo (with narration)</a></strong> · <strong><a href="https://hotel-ops-assistant.streamlit.app">Try the live app</a></strong> (no sign-in)</p>
+<p align="center"><strong><a href="https://vamsialla.com/projects/hotel-ops-assistant.html#demo">▶ Watch the full 2-minute demo (with narration)</a></strong> · <strong><a href="https://hotel-ops-assistant.streamlit.app">Try the live app</a></strong> (no sign-in)</p>
 
 **An AI assistant that gives hotel front-desk staff correct, property-specific policy answers in seconds, with the source for every fact.**
 
 > **Project 1 of 5** in my Forward Deployed Engineer portfolio. This is a *simulated client engagement*: a fictional hotel group with two properties, a beach resort and a mountain lodge. All documents are synthetic and written to mirror real hotel operations. Business value is a projection from stated assumptions, not a measured result.
 
-🔗 **[Live demo](https://hotel-ops-assistant.streamlit.app)** (open to everyone, no sign-in) · 📄 **[Case study](https://vamsialladev.github.io/projects/hotel-ops-assistant.html)** · 💰 **[Business case](docs/BUSINESS_CASE.md)** · 🏗️ **[Architecture](docs/ARCHITECTURE.md)** · 🎥 **[2-minute demo video](https://vamsialladev.github.io/videos/hotel-ops-demo.mp4)** (narrated, captioned)
+🔗 **[Live demo](https://hotel-ops-assistant.streamlit.app)** (open to everyone, no sign-in) · 📄 **[Case study](https://vamsialla.com/projects/hotel-ops-assistant.html)** · 💰 **[Business case](docs/BUSINESS_CASE.md)** · 🏗️ **[Architecture](docs/ARCHITECTURE.md)** · 🎥 **[2-minute demo video](https://vamsialla.com/videos/hotel-ops-demo.mp4)** (narrated, captioned)
 
 ---
 
@@ -32,7 +32,7 @@
 
 | If you are a... | Read |
 |---|---|
-| **Recruiter or hiring manager** | [At a glance](#at-a-glance) → [Results](#results) → [Skills demonstrated](#skills-demonstrated) → [Case study](https://vamsialladev.github.io/projects/hotel-ops-assistant.html) |
+| **Recruiter or hiring manager** | [At a glance](#at-a-glance) → [Results](#results) → [Skills demonstrated](#skills-demonstrated) → [Case study](https://vamsialla.com/projects/hotel-ops-assistant.html) |
 | **Hotel manager or operations lead** | [The problem](#the-problem) → [What it does](#what-it-does) → [Business case](docs/BUSINESS_CASE.md) |
 | **Engineer** | [Architecture](#architecture) → [Results](#results) → [Run it locally](#run-it-locally) → [Decision log](docs/DECISIONS.md) |
 
@@ -523,7 +523,7 @@ Built with AI-assisted development (Claude Code). I defined the requirements and
 
 **Vamsi Alla** · AI Engineer · I turn messy business problems into AI systems that work in production: measured, deployed and owned end to end.
 
-🌐 [Portfolio](https://vamsialladev.github.io) · 💼 [LinkedIn](https://www.linkedin.com/in/vamsi-alla/) · 🐙 [GitHub](https://github.com/vamsialladev) · ✉️ vamsialla.dev@gmail.com
+🌐 [Portfolio](https://vamsialla.com) · 💼 [LinkedIn](https://www.linkedin.com/in/vamsi-alla/) · 🐙 [GitHub](https://github.com/vamsialladev) · ✉️ vamsialla.dev@gmail.com
 
 ## License
 

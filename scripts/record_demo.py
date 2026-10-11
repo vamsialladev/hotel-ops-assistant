@@ -44,7 +44,7 @@ FPS = 30
 MSG = "[data-testid=stChatMessage]"
 GREEN, BRASS, CREAM, INK = "#1E4636", "#94702C", "#F4F1EA", "#FFFFFF"
 LINKS = [
-    ("Portfolio", "vamsialladev.github.io"),
+    ("Portfolio", "vamsialla.com"),
     ("Live app", "hotel-ops-assistant.streamlit.app"),
     ("GitHub", "github.com/vamsialladev/hotel-ops-assistant"),
 ]

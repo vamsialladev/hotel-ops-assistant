@@ -5,8 +5,8 @@ real questions, adds burned-in captions, a narration (AI voice, Piper, open sour
 It runs about 1:41. To record your own voice, play `docs/video/demo.mp4` muted and read the lines below at the
 times shown (they are also in `docs/video/narration-script.txt`). **Bold** lines are what happens on screen.
 
-Published video: https://vamsialladev.github.io/videos/hotel-ops-demo.mp4 (embedded on the
-[case study](https://vamsialladev.github.io/projects/hotel-ops-assistant.html#demo)).
+Published video: https://vamsialla.com/videos/hotel-ops-demo.mp4 (embedded on the
+[case study](https://vamsialla.com/projects/hotel-ops-assistant.html#demo)).
 
 ---
 

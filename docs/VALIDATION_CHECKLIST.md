@@ -42,7 +42,7 @@ Use the manual test checklist from the release summary on a laptop and a phone, 
 - [ ] Ask 3 questions on the live demo and confirm the How it works page says "keyword-only".
 - [ ] Set a monthly spending limit in the Anthropic Console.
 - [x] Record the demo video (`python scripts/record_demo.py`, captioned, from the live app) and publish it on the
-      portfolio site: https://vamsialladev.github.io/videos/hotel-ops-demo.mp4
+      portfolio site: https://vamsialla.com/videos/hotel-ops-demo.mp4
 
 ## Done when
 - [ ] Business case cites a measured baseline

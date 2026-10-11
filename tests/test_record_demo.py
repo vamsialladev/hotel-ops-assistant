@@ -45,7 +45,7 @@ def test_cards_are_full_size_and_links_point_to_the_public_pages(tmp_path):
     assert Image.open(tmp_path / "title.png").size == record_demo.SIZE == (1280, 720)
     assert Image.open(tmp_path / "end.png").size == (1280, 720)
     assert [url for _, url in record_demo.LINKS] == [
-        "vamsialladev.github.io",
+        "vamsialla.com",
         "hotel-ops-assistant.streamlit.app",
         "github.com/vamsialladev/hotel-ops-assistant",
     ]

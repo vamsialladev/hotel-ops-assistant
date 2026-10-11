@@ -45,7 +45,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow
 ### Added
 - Captioned 2-minute demo video, recorded from the live app with real answers by `python scripts/record_demo.py`
   (Playwright + ffmpeg): title card, burned-in captions, end card with links. Published on the portfolio site
-  (https://vamsialladev.github.io/videos/hotel-ops-demo.mp4), embedded on the case study page and linked from the README.
+  (https://vamsialla.com/videos/hotel-ops-demo.mp4), embedded on the case study page and linked from the README.
 - README command "Re-record the demo"; unit tests for the recorder's caption timing and cards (208 tests).
 
 ### Changed
