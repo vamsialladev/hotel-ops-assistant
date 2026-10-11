@@ -195,7 +195,8 @@ st.markdown(
 - **Wrong facts in questions:** if a question states a wrong fee or time, the answer corrects it from the sources.
 - **Cost caps:** per-session and daily question limits; off-topic questions cost nothing.
 - **Output escaping:** answers, documents and questions are shown as plain text, never as HTML.
-- **Private logs and admin:** usage logs are git-ignored; the admin page is password-protected with a lockout.
+- **Private logs and admin:** usage logs are git-ignored and mask secret values; the admin page is
+  password-protected with a lockout.
 """
 )
 
