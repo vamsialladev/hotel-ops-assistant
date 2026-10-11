@@ -1,4 +1,4 @@
-.PHONY: install pdfs index app test lint audit eval eval-answers demo screenshots secrets
+.PHONY: install pdfs index app test lint audit eval eval-answers eval-visitors demo screenshots secrets video
 
 install:        ## install dependencies
 	pip install -r requirements-dev.txt
@@ -29,6 +29,12 @@ eval:           ## retrieval eval (free)
 
 eval-answers:   ## full eval incl. answers, 3 runs, with cost (uses the API)
 	python -m eval.run_eval --answers --runs 3 --price-in 0.10 --price-out 0.50
+
+eval-visitors:  ## visitor first-question eval: routing and retrieval (free)
+	python -m eval.run_visitor_eval --bm25-only
+
+video:          ## record the narrated demo video from the live app (6 real questions)
+	python scripts/record_demo.py
 
 screenshots:    ## README screenshots and GIF (app must be running)
 	python scripts/capture_screenshots.py

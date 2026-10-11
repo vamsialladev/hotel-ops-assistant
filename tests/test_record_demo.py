@@ -50,3 +50,30 @@ def test_cards_are_full_size_and_links_point_to_the_public_pages(tmp_path):
         "github.com/vamsialladev/hotel-ops-assistant",
     ]
     assert "/admin" not in record_demo.APP
+
+
+def test_narration_cues_follow_each_line_and_keep_sentences_whole():
+    timeline = {
+        "steps": [{"key": "gold", "audio": 22.8}],
+        "durations": {"title": 4.0, "gold": 9.0},
+        "end_audio": None,
+    }
+    cues = record_demo.narration_cues(timeline)
+    assert cues[0][0] == record_demo.LEAD and cues[0][2].startswith("Hotel Operations Knowledge Assistant")
+    gold = [c for c in cues if c[0] >= 22.8]
+    assert gold[0][2].endswith("caps weekends at noon.")  # "two p.m. checkout" is not split
+    assert round(gold[-1][1], 1) == round(22.8 + 9.0, 1)  # the line's sentences fill its duration
+
+
+def test_webvtt_and_script_text():
+    cues = [(0.4, 2.5, "Hello."), (65.0, 67.25, "Second line.")]
+    vtt = record_demo.webvtt(cues)
+    assert vtt.startswith("WEBVTT\n\n00:00:00.400 --> 00:00:02.500\nHello.")
+    assert "00:01:05.000 --> 00:01:07.250\nSecond line." in vtt
+    assert "[1:05.0] Second line." in record_demo.script_text(cues)
+
+
+def test_every_step_has_a_caption_and_a_narration_line():
+    assert set(record_demo.CAPTIONS) <= set(record_demo.NARRATION)
+    assert {"title", "end"} <= set(record_demo.NARRATION)
+    assert all(len(c) <= 75 for c in record_demo.CAPTIONS.values())  # one line in the caption band
