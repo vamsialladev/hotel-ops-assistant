@@ -80,6 +80,11 @@ def errors_file():
     return ERRORS_FILE or LOG_DIR / "errors.jsonl"
 
 
+def safe_message(exc: BaseException) -> str:
+    """Error type and a short, masked message for the request log: no traceback, no secrets."""
+    return f"{type(exc).__name__}: " + " ".join(mask_secrets(str(exc)).split())[:MESSAGE_CHARS]
+
+
 def error_record(page: str, exc: BaseException) -> dict:
     """What gets stored: the page, a short error type and a short, masked message. Never the question text
     or a traceback (those stay in the owner-only stdout logs)."""

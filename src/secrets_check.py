@@ -24,6 +24,19 @@ def secret_status(env=None, names=REQUIRED + RECOMMENDED) -> dict[str, str]:
     return {name: "set" if is_set(env.get(name)) else "missing" for name in names}
 
 
+SECRET_NAME_PARTS = ("KEY", "SECRET", "PASSWORD", "TOKEN")
+MIN_SECRET_CHARS = 8  # shorter values would mask ordinary words
+
+
+def secret_values(env=None) -> list[str]:
+    """Values of the configured secrets (required ones, plus anything named like a key, secret, password or
+    token), longest first. Used only to mask them out of the logs; never shown or logged."""
+    env = os.environ if env is None else env
+    names = set(REQUIRED) | {n for n in env if any(part in n.upper() for part in SECRET_NAME_PARTS)}
+    values = {(env.get(n) or "").strip() for n in names}
+    return sorted((v for v in values if len(v) >= MIN_SECRET_CHARS and is_set(v)), key=len, reverse=True)
+
+
 def missing_required(env=None) -> list[str]:
     return [name for name, state in secret_status(env, REQUIRED).items() if state == "missing"]
 

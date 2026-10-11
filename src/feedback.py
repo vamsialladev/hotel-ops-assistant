@@ -4,6 +4,7 @@ from pathlib import Path
 
 from src.chat import FEEDBACK_REASONS
 from src.config import LOG_DIR
+from src.requestlog import SCHEMA_VERSION
 from src.usage import append_jsonl, now_iso, read_jsonl
 
 FEEDBACK_FILE = LOG_DIR / "feedback.jsonl"
@@ -20,7 +21,9 @@ def log_feedback(
     source: str = "typed",
 ) -> dict:
     record = {
+        "schema_version": SCHEMA_VERSION,
         "time": now_iso(),
+        "request_id": turn_id,  # links the rating to its request in the usage log
         "turn_id": turn_id,
         "property": prop,
         "source": source,

@@ -1,18 +1,22 @@
 """Private usage log: one JSON line per question in data/usage.jsonl (git-ignored), plus a short
 line on stdout through Python logging, which the app owner can read in Streamlit Cloud's logs.
 
-Never logged: the API key or any other secret. Question text is stored in the JSON file only
-(for the owner's Insights and Admin pages), not in stdout logs.
+Never logged: the API key or any other secret. Every record is passed through `redact` before it's written,
+so a secret value (or anything shaped like an Anthropic key) is masked even if a visitor pastes one into a
+question. Question and answer text are stored in the JSON file only (for the owner's Insights and Admin pages),
+not in stdout logs.
 """
 
 import json
 import logging
+import re
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
 from src.config import LOG_DIR, LOG_MAX_ENTRIES
 from src.fileio import with_retries
+from src.secrets_check import secret_values
 
 USAGE_FILE = LOG_DIR / "usage.jsonl"
 logger = logging.getLogger("hotel_ops.usage")
@@ -30,12 +34,31 @@ def estimate_cost(tokens_in: int, tokens_out: int, price_in: float | None, price
     return (tokens_in * price_in + tokens_out * price_out) / 1_000_000
 
 
+REDACTED = "[redacted]"
+KEY_PATTERN = re.compile(r"sk-ant-[A-Za-z0-9_\-]+")
+
+
+def redact(value, secrets: list[str] | None = None):
+    """Copy of a record with every secret value, and anything shaped like an Anthropic key, masked."""
+    secrets = secret_values() if secrets is None else secrets
+    if isinstance(value, str):
+        for s in secrets:
+            value = value.replace(s, REDACTED)
+        return KEY_PATTERN.sub(REDACTED, value)
+    if isinstance(value, dict):
+        return {k: redact(v, secrets) for k, v in value.items()}
+    if isinstance(value, list | tuple):
+        return [redact(v, secrets) for v in value]
+    return value
+
+
 def append_jsonl(path: Path, record: dict, max_entries: int = LOG_MAX_ENTRIES) -> bool:
     """Append one record, then keep only the most recent `max_entries` lines (retention rule).
 
     Never raises: a log that can't be written (even after retries) is reported on stdout and skipped,
     because logging must not break the page that's being logged. Returns whether the write succeeded."""
     path = Path(path)
+    record = redact(record)
 
     def write():
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -72,6 +95,8 @@ def read_jsonl(path: Path) -> list[dict]:
 
 
 STDOUT_FIELDS = (
+    "request_id",
+    "outcome",
     "property",
     "model",
     "mode",
@@ -89,7 +114,7 @@ STDOUT_FIELDS = (
 
 def log_usage(record: dict, path: Path | None = None) -> dict:
     """`path` defaults to USAGE_FILE read at call time, so tests (and LOG_DIR) can redirect it."""
-    record = {"time": now_iso(), **record}
+    record = redact({"time": now_iso(), **record})
     append_jsonl(path or USAGE_FILE, record)
     logger.info("question %s", json.dumps({k: record.get(k) for k in STDOUT_FIELDS}))
     return record

@@ -74,7 +74,11 @@ def test_usage_record_fields_and_cost():
     )
     assert rec["cost_usd"] == (1000 * 0.10 + 200 * 0.50) / 1e6
     assert rec["refused"] is False and rec["grounding_flag"] is False and rec["pre_api"] is False
-    assert rec["retrieved"] == [{"source": "mountain-lodge/policies.md", "section": "Policies > Pets", "score": 0.03}]
+    assert rec["retrieved"] == [
+        {"source": "mountain-lodge/policies.md", "section": "Policies > Pets", "score": 0.03, "cited": True}
+    ]
+    assert rec["citations"] == [{"n": 1, "source": "mountain-lodge/policies.md", "section": "Policies > Pets"}]
+    assert (rec["outcome"], rec["answer"], rec["refusal_reason"]) == ("answered", "$50 [1]", None)
     assert "api_key" not in str(rec).lower()
 
 

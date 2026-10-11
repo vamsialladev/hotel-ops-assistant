@@ -8,7 +8,7 @@ from src import assist, intents, service
 from src.chat import FEEDBACK_REASONS, Turn, remaining, validate_question
 from src.config import MAX_QUESTION_CHARS, MAX_QUESTIONS_PER_SESSION
 from src.display import esc, quote_markdown, safe_markdown, scope_label, source_chip_html, source_label
-from src.errors import UNAVAILABLE, category, classify, private_detail, record_error
+from src.errors import UNAVAILABLE, category, classify, private_detail, record_error, safe_message
 from src.escalation import RULES_BY_ID
 from src.feedback import log_feedback
 from src.generate import NOT_FOUND, AnswerStream
@@ -261,19 +261,22 @@ def stream_text(run: AnswerStream, waiting):
 
 
 # ---------- one message ----------
-def finish(turn: Turn, kind: str, counted: bool = True):
-    """Attach the right suggestions (no API call), then add the turn to the conversation."""
+def finish(turn: Turn, kind: str, counted: bool = True, **log_fields):
+    """Attach the right suggestions (no API call), log the request with everything the visitor sees, then add
+    the turn to the conversation."""
     turn.kind = kind
     asked = chat.questions(turn.property) + [turn.question]
     cited = (turn.result or {}).get("citations", [])
     turn.suggestion_label, turn.suggestions = assist.suggestions_after(
         kind, turn.question, turn.property, cited, asked, catalog
     )
+    log_turn(turn, kind, **log_fields)
     chat.add(turn, counted=counted)
 
 
 def log_turn(turn: Turn, kind: str, **fields):
-    """One usage record per message, with how it was asked and whether it was the session's first."""
+    """One usage record per request (answered, refused, greeting, off-topic, error or cap), with how it was
+    asked, whether it was the session's first, and the follow-ups shown under it."""
     cited = (turn.result or {}).get("citations", [])
     topic = topic_of(cited[0], catalog) if cited else None
     log_usage(
@@ -288,6 +291,8 @@ def log_turn(turn: Turn, kind: str, **fields):
             session_id=chat.session_id,
             first=chat.messages == 0,
             topic_group=topic.label if topic else None,
+            follow_ups=turn.suggestions,
+            follow_up_label=turn.suggestion_label,
             **fields,
         )
     )
@@ -302,12 +307,12 @@ def handle(raw: str, prop: str, source: str = "typed"):
     intent = intents.detect(question)
     if intent:  # hi / thanks / what can you do: instant, free, not counted toward the limits
         turn.result = {"answer": intents.reply(intent, b.property_name(prop)), "found": False, "citations": []}
-        log_turn(turn, "greeting", pre_api=True)
-        finish(turn, "greeting", counted=False)
+        finish(turn, "greeting", counted=False, pre_api=True)
         render_turn(turn)
         return
     if chat.asked >= MAX_QUESTIONS_PER_SESSION:
         st.info(SESSION_LIMIT, icon=":material/hourglass_bottom:")
+        log_turn(turn, "answer", pre_api=True, error="session_cap", error_message=SESSION_LIMIT)
         return
     with st.chat_message("user", avatar=USER_AVATAR):
         st.markdown(safe_markdown(question))
@@ -315,11 +320,10 @@ def handle(raw: str, prop: str, source: str = "typed"):
         prep = service.prepare(retriever, question, prop)
         if prep["blocked"]:  # off-topic or gibberish: answered without an API call
             turn.result = service.finalize(question, prop, service.blocked_result())
-            log_turn(turn, "scope", pre_api=True)
-            finish(turn, "scope")
+            finish(turn, "scope", pre_api=True)
         elif not ui.daily_counter().try_consume():
             turn.error = DAILY_LIMIT
-            log_turn(turn, "answer", pre_api=True, error="daily_cap")
+            log_turn(turn, "answer", pre_api=True, error="daily_cap", error_message=DAILY_LIMIT)
             chat.add(turn)
         else:
             waiting = st.empty()
@@ -335,14 +339,13 @@ def handle(raw: str, prop: str, source: str = "typed"):
                 log.error("answer failed: %s (%s) %s", code, category(code), private_detail(exc))
                 record_error("Assistant", exc)
                 turn.error = UNAVAILABLE
-                log_turn(turn, "answer", hits=prep["hits"], error=code)
+                log_turn(turn, "answer", hits=prep["hits"], error=code, error_message=safe_message(exc))
                 chat.add(turn)
                 render_answer(turn)
                 return
             turn.result = service.finalize(question, prop, run.result)
             kind = "answer" if turn.result["found"] else "refusal"
-            log_turn(turn, kind, hits=prep["hits"], ttft=run.time_to_first_token, total=run.total_time)
-            finish(turn, kind)
+            finish(turn, kind, hits=prep["hits"], ttft=run.time_to_first_token, total=run.total_time)
             text_shown = isinstance(shown, str) and shown.strip() == safe_markdown(turn.result["answer"]).strip()
             if kind == "refusal":
                 streamed.empty()
