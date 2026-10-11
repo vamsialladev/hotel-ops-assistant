@@ -1,53 +1,81 @@
 # 2-Minute Demo Script
 
-Record your screen (OBS or Loom) with the app open at about 1280 px wide, light mode, on a fresh session.
-Before recording: start the app, open the Assistant page, and close other tabs. Speak slowly; the words below
-take about 2 minutes at a calm pace. **Bold** lines are what you do; the rest is what you say, word for word.
+The published demo video follows this script exactly: `python scripts/record_demo.py` drives the **live app** with
+real questions, adds burned-in captions, a narration (AI voice, Piper, open source) and a WebVTT captions track.
+It runs about 1:41. To record your own voice, play `docs/video/demo.mp4` muted and read the lines below at the
+times shown (they are also in `docs/video/narration-script.txt`). **Bold** lines are what happens on screen.
+
+Published video: https://vamsialladev.github.io/videos/hotel-ops-demo.mp4 (embedded on the
+[case study](https://vamsialladev.github.io/projects/hotel-ops-assistant.html#demo)).
 
 ---
 
-## 0:00 – 0:15 · The problem
-**On screen: the Assistant welcome screen, Beach Resort selected.**
+## 0:00 · Title card (3 s)
+**On screen: "Hotel Operations Knowledge Assistant · Vamsi Alla · Simulated client engagement · synthetic hotel documents".**
 
-"Front-desk staff at a two-hotel group answer the same policy questions all day: pets, late checkout, refunds. The rules live in PDFs, menus and staff notes, and they're different at each hotel. This is a simulated client engagement with synthetic documents, but the problem is real."
+"Hotel Operations Knowledge Assistant: a simulated client project."
 
-## 0:15 – 0:40 · Same question, two hotels
-**Click the sample "Can a guest bring their dog?". Let it stream.**
+## 0:03 · A cited answer within 10 seconds
+**Beach Resort welcome screen. Click the good-question example "Can a guest bring their dog?". The answer streams in with its source chip and related questions.**
 
-"I ask in plain English, and the answer streams in a second later. Beach Resort: dogs up to 40 pounds, 75 dollars per stay. Every fact has a citation, and this chip shows which document it came from and when that policy took effect."
+"A front-desk agent at Beach Resort asks if a guest can bring their dog. In seconds, a short answer appears, with the source for every fact."
 
-**Switch to Mountain Lodge. Click the same sample question.**
+## 0:13 · Same question, other hotel
+**Switch to Mountain Lodge and click the same example.**
 
-"Same question at the Mountain Lodge: any size, 50 dollars a night, capped at 200. Each hotel keeps its own conversation, and it never sees the other hotel's rules."
+"At Mountain Lodge, the same question gets that hotel's own rules. It never mixes up properties, and related questions are one tap away."
 
-## 0:40 – 1:00 · Overrides and wrong facts
-**Switch back to Beach Resort. Type: "A Gold member wants late checkout on Saturday. How late can they stay?" Open "Sources".**
+## 0:22 · A property rule beats a brand perk
+**Back to Beach Resort. Type "A Gold member wants late checkout on Saturday. How late can they stay?" Open "Sources".**
 
-"Here the loyalty program says 2 PM, but this hotel caps weekends at noon. The assistant knows the property rule wins, says so, and shows me the exact text."
+"Here, the loyalty program promises a two p.m. checkout, but this hotel caps weekends at noon. The assistant applies the hotel's rule and shows the exact text."
 
-**Switch to Mountain Lodge. Type: "Can a guest bring their dog? (expect 40 lbs, $75 per stay)".**
+## 0:36 · Check with a manager
+**Type "Can I give a guest a $300 refund myself?"**
 
-"And if I bring the wrong number myself, it corrects me instead of agreeing."
+"A refund over the front-desk limit gets a check-with-a-manager note, quoting the policy."
 
-## 1:00 – 1:20 · Knowing its limits
-**Switch to Beach Resort. Type: "Can I give a guest a $300 refund myself?"**
+## 0:46 · Refuses instead of guessing
+**Type "Where is the fire assembly point?"**
 
-"Refunds over the front-desk limit get a 'check with a manager' note, quoting the actual rule."
+"When the documents don't say, it refuses instead of guessing. A wrong safety answer is worse than none."
 
-**Type: "Where is the fire assembly point?"**
+## 0:54 · Never a dead end
+**Type "Can you book me a room for Friday?" The reply says it can't answer from the hotel's documents and shows "Did you mean" questions and topic chips.**
 
-"And when the documents don't say, it refuses. The only safety document here is a scanned image, and a wrong safety answer is worse than no answer."
+"And instead of a dead end, it suggests close questions it can answer."
 
-## 1:20 – 1:40 · What managers see
-**Open Insights, then scroll to Known policy gaps.**
+## 1:02 · Guidance on what to ask
+**Click "New conversation" in the sidebar. The welcome screen returns: How to use, What this demo knows, good questions.**
 
-"Managers see what staff ask and which questions the documents couldn't answer. While building this I found real gaps, like credits between 51 and 200 dollars that no rule covers. That's a conversation for the client, not something the AI should guess."
+"Every new conversation starts with guidance: how to use it, what this demo knows, and good questions to ask."
 
-## 1:40 – 2:00 · Proof it works
-**Open How it works and pause on Key results, then the model comparison.**
+## 1:09 · Topic chips
+**Click the "Spa" topic chip: example questions appear.**
 
-"Fifty-four test questions run on every change, including a prompt-injection attack hidden in the staff notes. The live demo scores 96 percent on answers, about two and a half seconds for a full answer, and 17 cents per thousand questions. The eval also caught my own grader passing a wrong answer, so I fixed the measurement first. Everything is on GitHub, with the decisions behind it."
+"Topic chips show example questions for each area, like the spa."
+
+## 1:13 · What managers see
+**Open Insights and scroll: how people ask, most-used topics, possible policy gaps.**
+
+"Managers see what staff ask, how they ask, and which questions point to gaps in the policies."
+
+## 1:20 · The documents
+**Open the Document library.**
+
+"Every answer comes only from these documents, all synthetic, for a simulated client."
+
+## 1:26 · Proof it works
+**Open How it works: key results read from the latest eval report.**
+
+"It's measured on fifty-four test questions: ninety-eight percent answer accuracy on this live demo, at about seventeen cents per thousand questions."
+
+## 1:35 · End card (6 s)
+**On screen: portfolio, live app and GitHub links; "Narration: AI voice (Piper, open source)".**
+
+"Try the live app, or read the code and the decisions. The links are on screen."
 
 ---
 
-**Recorded version:** `python scripts/record_demo.py` records this walkthrough from the live app with real answers and burned-in captions (no voice), adds a title and end card, and writes `docs/video/demo.mp4` (git-ignored) and `docs/images/demo.gif`. The published copy is https://vamsialladev.github.io/videos/hotel-ops-demo.mp4, embedded on the case study page. To narrate it yourself, read the lines above over that recording or record your own screen.
+**Re-record after a UI change:** `python scripts/record_demo.py --web-out ../vamsi-portfolio/videos/hotel-ops-demo.mp4`
+(6 real questions on the live app), then commit the new video, poster and `.vtt` in the portfolio repo.

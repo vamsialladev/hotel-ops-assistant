@@ -6,7 +6,7 @@ Every image here is real output from this repo. Regenerate them after changes so
 | File | Shows | How to regenerate |
 |---|---|---|
 | `eval-retrieval.png` | 54-question eval, hybrid: retrieval, scope and escalation checks | `python -m eval.run_eval > out.txt`, then `python scripts/render_terminal.py out.txt docs/images/eval-retrieval.png --command "python -m eval.run_eval" --title "hotel-ops-assistant: retrieval, scope and escalation eval (hybrid)"` |
-| `tests.png` | `pytest` with coverage: 208 passed, 96% | `python -m pytest -q --cov=src --cov=eval > out.txt`, then render as above |
+| `tests.png` | `pytest` with coverage: 274 passed, 97% | `python -m pytest -q --cov=src --cov=eval > out.txt`, then render as above |
 | `business-case.png` | Calculator scenarios, 100 properties (projection) | `python scripts/business_case.py --scenarios --properties 100 --hosting 15000 > out.txt`, then render |
 
 ## App screenshots (captured from the running app with real questions)
@@ -15,8 +15,10 @@ questions (about $0.002) and never captures the Admin page.
 
 | File | Shows |
 |---|---|
-| `demo.gif` | The dog question at Beach Resort on the live app, with its caption (10 s, about 1.6 MB); made by `python scripts/record_demo.py` |
-| `assistant-welcome.png` | Empty conversation: welcome, what it can and can't do, sample questions |
+| `demo.gif` | The first cited answer on the live app (the dog question at Beach Resort), with its caption (10 s, about 1.4 MB, no sound); made by `python scripts/record_demo.py` |
+| `assistant-welcome.png` | Live app welcome screen: How to use, What this demo knows with topic chips, good questions (1280×800) |
+| `follow-ups.png` | Live app: a cited answer with related questions |
+| `did-you-mean.png` | Live app: a booking request refused, with "Did you mean" questions and topic chips |
 | `answer-sources.png` | Gold member late checkout at Beach Resort, with sources expanded |
 | `two-properties.png` | The dog question at both properties, side by side |
 | `check-with-manager.png` | A $300 refund question with the manager note quoting the rule |

@@ -34,6 +34,10 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## Common tasks
 
+**Add a suggested question or topic:** edit `data/suggestions.toml` (only questions the documents answer), then run `python -m eval.run_suggestions_eval --bm25-only` (free) and, before release, with `--answers`. A new document section needs a topic, or `tests/test_suggestions.py` fails.
+
+**Add a visitor question:** append to `eval/visitor_questions.jsonl` with `expect` (answer, refuse, greeting or offtopic) and, for answers, `expected_sources` and the facts to check.
+
 **Add or update a document**
 1. Put it in `data/raw/<property>/`, or `data/raw/shared/` if it applies to every property.
 2. For Markdown, add front matter: `title`, `effective` date, and `status: current`.

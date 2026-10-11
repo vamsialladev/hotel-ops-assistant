@@ -5,13 +5,17 @@
 ![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
+## See it in action
+
+<p align="center"><img src="docs/images/demo.gif" alt="On the live app, a front-desk agent at Beach Resort clicks 'Can a guest bring their dog?' and a cited answer streams in with its source chip and related questions" width="760"></p>
+<p align="center"><em>The live app: one click on a suggested question, a cited answer from the hotel's own policy in about two seconds.</em></p>
+<p align="center"><strong><a href="https://vamsialladev.github.io/projects/hotel-ops-assistant.html#demo">▶ Watch the full 2-minute demo (with narration)</a></strong> · <strong><a href="https://hotel-ops-assistant.streamlit.app">Try the live app</a></strong> (no sign-in)</p>
+
 **An AI assistant that gives hotel front-desk staff correct, property-specific policy answers in seconds, with the source for every fact.**
 
 > **Project 1 of 5** in my Forward Deployed Engineer portfolio. This is a *simulated client engagement*: a fictional hotel group with two properties, a beach resort and a mountain lodge. All documents are synthetic and written to mirror real hotel operations. Business value is a projection from stated assumptions, not a measured result.
 
-🔗 **[Live demo](https://hotel-ops-assistant.streamlit.app)** (open to everyone, no sign-in) · 📄 **[Case study](https://vamsialladev.github.io/projects/hotel-ops-assistant.html)** · 💰 **[Business case](docs/BUSINESS_CASE.md)** · 🏗️ **[Architecture](docs/ARCHITECTURE.md)** · 🎥 **[2-minute demo video](https://vamsialladev.github.io/videos/hotel-ops-demo.mp4)**
-
-<p align="center"><img src="docs/images/demo.gif" alt="A front-desk agent asks whether a guest can bring their dog at Beach Resort, and the answer streams in with its source chip and a caption" width="720"></p>
+🔗 **[Live demo](https://hotel-ops-assistant.streamlit.app)** (open to everyone, no sign-in) · 📄 **[Case study](https://vamsialladev.github.io/projects/hotel-ops-assistant.html)** · 💰 **[Business case](docs/BUSINESS_CASE.md)** · 🏗️ **[Architecture](docs/ARCHITECTURE.md)** · 🎥 **[2-minute demo video](https://vamsialladev.github.io/videos/hotel-ops-demo.mp4)** (narrated, captioned)
 
 ---
 
@@ -22,7 +26,7 @@
 | **Problem** | Staff search scattered PDFs, menus and notes while a guest waits, and the rules differ by hotel. Wrong answers turn into refunds and complaints. |
 | **Solution** | Pick your property, ask in plain English, and get a 1–4 sentence answer that cites every fact. It refuses when the documents don't say, corrects wrong facts in the question, and points to a manager for refunds and safety. |
 | **Projected value** | ~$32K/yr net for 2 properties (range $8.5K–$66K); ~$1.6M/yr at 100-property scale ([assumptions](docs/BUSINESS_CASE.md)) |
-| **Quality (measured)** | 54-question eval, 3 runs: **98% answer accuracy** with hybrid search, **96%** on the live demo's keyword-only search; 100% of escalation rules correct; full answer p95 **2.4–2.7s**; **$0.17–0.19 per 1,000 questions**. 184 unit tests, 96% coverage. |
+| **Quality (measured)** | 54-question eval, 3 runs: **98% answer accuracy** on the live demo's keyword-only search (hybrid 97%, runs 96–98%); 100% of escalation rules correct; full answer p95 **2.5–2.7s**; **$0.17–0.19 per 1,000 questions**. **First-question success 100%** on 49 questions a visitor types first (43% before the coverage work). 274 tests, 97% coverage. |
 
 ## Where to start
 
@@ -46,13 +50,17 @@ Staff have to find the right document for the right hotel while the guest waits.
 
 ## What it does
 
-| Empty conversation, per property | Cited answer with a property override | Same question, different property |
+| Welcome: how to use, what it knows, topics, good questions | Answer with related questions | Refused, with "Did you mean" |
 |---|---|---|
-| <img src="docs/images/assistant-welcome.png" alt="Assistant welcome screen with what it can and can't help with and four clickable sample questions for Beach Resort" width="300"> | <img src="docs/images/answer-sources.png" alt="Gold member late checkout answer: capped at 12 PM on Saturday at Beach Resort, citing the property override, brand standards and the loyalty table, with sources expanded" width="300"> | <img src="docs/images/two-properties.png" alt="The dog question answered at Beach Resort (40 lbs, $75 per stay) and at Mountain Lodge (any size, $50 per night capped at $200)" width="300"> |
-| **"Check with a manager", quoting the rule** | **Refuses instead of guessing** | **Insights for managers** |
-| <img src="docs/images/check-with-manager.png" alt="A $300 refund question answered with a manager note quoting the brand standard: credits up to $50 without approval, over $200 needs the Manager on Duty" width="300"> | <img src="docs/images/refusal.png" alt="Fire assembly point question refused, with a safety note explaining the only safety document is a scanned image" width="300"> | <img src="docs/images/insights.png" alt="Insights page with questions asked, helpful rate, top topics, a refused question listed as a possible policy gap, and known policy gaps" width="300"> |
+| <img src="docs/images/assistant-welcome.png" alt="Welcome screen on the live app: a three-step How to use strip, the What this demo knows panel with twelve topic chips, and three good-question buttons for Beach Resort" width="300"> | <img src="docs/images/follow-ups.png" alt="A cited answer about dogs at Beach Resort with its source chip and two related questions to click" width="300"> | <img src="docs/images/did-you-mean.png" alt="A booking request refused with I can't answer that from this hotel's documents, three Did you mean questions and topic chips" width="300"> |
+| **Cited answer with a property override** | **Same question, different property** | **"Check with a manager", quoting the rule** |
+| <img src="docs/images/answer-sources.png" alt="Gold member late checkout answer: capped at 12 PM on Saturday at Beach Resort, citing the property override, brand standards and the loyalty table, with sources expanded" width="300"> | <img src="docs/images/two-properties.png" alt="The dog question answered at Beach Resort (40 lbs, $75 per stay) and at Mountain Lodge (any size, $50 per night capped at $200)" width="300"> | <img src="docs/images/check-with-manager.png" alt="A $300 refund question answered with a manager note quoting the brand standard: credits up to $50 without approval, over $200 needs the Manager on Duty" width="300"> |
+| **Refuses instead of guessing** | **Insights: how people ask, topics, gaps** | |
+| <img src="docs/images/refusal.png" alt="Fire assembly point question refused, with a safety note explaining the only safety document is a scanned image" width="300"> | <img src="docs/images/insights.png" alt="Insights page with questions asked, helpful rate, how people ask (typed vs suggestions), most-used topics and possible policy gaps" width="300"> | |
 
 **For front-desk staff (Assistant page)**
+- **Knows what to ask, from the first second:** a "How to use" strip, a "What this demo knows" panel whose topic chips come from the indexed documents, three good-question examples and a rotating "Try: …" hint, on first visit and after every New conversation. Click a suggestion or type your own question.
+- **Never a dead end:** related questions under each answer (picked by the topic of the cited section, never repeating one already asked); after a refusal, "Did you mean" questions and topic chips; "hi" or "what can you do?" gets an instant reply with examples (no API call, not counted); gibberish or unrelated questions get a polite scope message with popular questions. Every suggestion comes from a curated list that's tested to get a real answer.
 - **Property-aware chat:** pick Beach Resort or Mountain Lodge; each keeps its own history, and "New conversation" clears only the current one.
 - **Cited answers, streamed:** the first words appear in about a second; every fact has a numbered citation, a source chip (document › section, property-specific or brand-wide, effective date) and the quoted text under **Sources**.
 - **Refuses rather than guesses**, and refuses off-topic questions before calling the API when nothing in the documents matches.
@@ -61,11 +69,11 @@ Staff have to find the right document for the right hotel while the guest waits.
 - **Grounding check:** a number that doesn't appear in the cited sources is flagged "Check before quoting".
 - **Copy and feedback:** copy the answer; 👍 / 👎 with an optional reason (wrong fact, missing information, wrong property, unclear, other), saved once without re-asking.
 
-**For managers:** **Insights** (questions asked, helpful rate, 👎 reasons, top topics, refused questions as possible policy gaps, known gaps found in the documents) and a **Document library** (every document's status: indexed, superseded and excluded, or scanned and needing OCR, plus the data-quality issues found).
+**For managers:** **Insights** (questions asked, helpful rate, how people ask (typed vs suggestions), most-used topics, 👎 reasons and suggestions that got a 👎, typed questions the documents couldn't answer as possible policy gaps, known gaps found in the documents) and a **Document library** (every document's status: indexed, superseded and excluded, or scanned and needing OCR, plus the data-quality issues found).
 
 **For recruiters and engineers:** **How it works** reads the latest real eval report (never hard-coded numbers), shows which retrieval mode the running app uses and its measured accuracy, the architecture, the Haiku 4.5 vs 5.5 comparison, and the safety measures.
 
-**For the owner only:** a password-protected **Admin** page (hidden from visitors): health and recent errors, warnings when the error rate or cost crosses a threshold, questions today against the daily cap, a filterable activity table with 👍 / 👎, CSV downloads of the logs, sign out and a 30-minute auto-lock. See [Monitoring](#monitoring).
+**For the owner only:** a password-protected **Admin** page (hidden from visitors): health and recent errors, first-question success (live and from the eval), how each question was asked, warnings when the error rate or cost crosses a threshold, questions today against the daily cap, a filterable activity table with 👍 / 👎, CSV downloads of the logs, sign out and a 30-minute auto-lock. See [Monitoring](#monitoring).
 
 <details>
 <summary>More screenshots: document library, how it works, dark mode, phone</summary>
@@ -203,12 +211,26 @@ sequenceDiagram
 ### Scores (Claude Haiku 5.5, shipped settings, 3 runs)
 | Setup | Retrieval | Answer accuracy | Citation | Grounding | Refusals | First word p50 | Full answer p95 | Cost / 1,000 |
 |---|---|---|---|---|---|---|---|---|
-| **Keyword-only (live demo)** | **96%** (43/45) | **96%** (94–96%) | 96% | 95% | 26/27 | 0.89s | 2.71s | $0.17 |
-| Hybrid (local, Docker) | **98%** (44/45) | **98%** (96–98%) | 98% | 97% | 27/27 | 0.97s | 2.42s | $0.19 |
+| **Keyword-only (live demo)** | **98%** (44/45) | **98%** (98–98%) | 98% | 98% | 27/27 | 1.01s | 2.49s | $0.17 |
+| Hybrid (local, Docker) | **98%** (44/45) | **97%** (96–98%) | 98% | 100% | 27/27 | 1.12s | 2.71s | $0.19 |
 
-Both modes: escalation rules 54/54, 2 of 5 off-topic questions refused before the API (the rest refused by the model), 0 answerable questions wrongly blocked in hybrid mode.
+Measured 2026-10-10, after the content coverage work (before it: keyword-only 96% answers, 43/45 retrieval, 26/27 refusals; hybrid 98%). Both modes: escalation rules 54/54, 2 of 5 off-topic questions refused before the API (the rest refused by the model). The same two questions miss in hybrid as before (a grader false positive on the injection case and the Spanish question).
 
-**Model comparison** (same 54 questions, hybrid, 3 runs each): Claude Haiku 4.5 scored 96% vs 98% for Haiku 5.5, with faster answers (p95 1.56s vs 2.42s) but about 5× the cost ($1.01 vs $0.19 per 1,000). Read by hand, Haiku 4.5's misses were real wrong answers ("a 16-year-old can book a facial"; "you can issue a $120 credit without additional approval"), while Haiku 5.5's one extra miss was a grader false positive. Details: [decision 26](docs/DECISIONS.md).
+### First questions from visitors
+
+What a recruiter, hotel manager or guest types first, without seeing any examples: 49 questions in [`eval/visitor_questions.jsonl`](eval/visitor_questions.jsonl) (35 in scope across both hotels, 4 that must be refused, 5 greetings, 5 off-topic or gibberish). Success = a correct cited answer, or the right reply with at least 2-3 questions that work.
+
+| Real answers, Claude Haiku 5.5 | Keyword-only (live) before → after | Hybrid before → after |
+|---|---|---|
+| **First-question success** | 43% → **100%** | 49% → **100%** |
+| In-scope questions answered correctly with a citation | 60% → **100%** | 69% → **100%** |
+| Out-of-scope questions refused | 100% → 100% | 100% → 100% |
+| Greetings and meta questions handled | 0% → 100% | 0% → 100% |
+| Off-topic and gibberish handled | 0% → 100% | 0% → 100% |
+
+All 76 curated suggestions retrieve their topic and get a real answer. CI gates the visitor set's routing and retrieval at the measured 100%. Honest caveat: I wrote this set while writing the new documents, so 100% flatters; questions from someone who hasn't seen the documents are next ([decision 48](docs/DECISIONS.md)).
+
+**Model comparison** (same 54 questions, hybrid, 3 runs each). First run, 2026-10-09: Claude Haiku 4.5 scored 96% vs 98% for Haiku 5.5, and read by hand, Haiku 4.5's misses were real wrong answers ("a 16-year-old can book a facial"; "you can issue a $120 credit without additional approval"). Re-run 2026-10-10 on the expanded documents: Haiku 4.5 98% (96–98%), Haiku 5.5 97% (96–98%), within run-to-run range of each other, and 4.5's only miss was the Spanish question. Haiku 4.5 is faster (p95 1.45s vs 2.71s) but costs about 5× as much ($0.99 vs $0.19 per 1,000), so 5.5 stays shipped for the cost ([decision 26](docs/DECISIONS.md)).
 
 <details>
 <summary>Full eval run: 54 questions, retrieval, scope and escalation checks (hybrid)</summary>
@@ -222,7 +244,8 @@ Both modes: escalation rules 54/54, 2 of 5 off-topic questions refused before th
 3. **A "wrong fee" bug was in the question, not the system.** The $75 at Mountain Lodge came from a number pasted into the question. The real risk is accepting stated facts, so the prompt now corrects them, and four eval cases check it (12/12 corrected).
 4. **Hybrid search earned its place on one question type.** "A guest left a jacket" shares no word with the Lost and Found SOP: keyword search finds nothing, embeddings rank it first. The English-only embedding model still misses the Spanish question.
 5. **Metrics were too lenient more than once.** The original retrieval check counted the right *document* anywhere; the strict *passage* check gave the honest 94%. A bare `pytest --cov` reported 93% coverage by counting the tests themselves.
-6. **A model upgrade is an eval question, not a version bump.** Haiku 5.5 matched Haiku 4.5 on quality and removed its unsafe wrong answers, at a fifth of the cost; the tradeoff is about a second more at p95.
+6. **Test like a first-time visitor.** The 54-question eval was written against the documents, so it scored 96–98% while 40% of the questions a visitor types first (Wi-Fi, the gym, breakfast, "checkout") were refused or scope-blocked. Measuring that set first, then fixing coverage and recovery, took first-question success from 43% to 100%.
+7. **A model upgrade is an eval question, not a version bump.** Haiku 5.5 matched Haiku 4.5 on quality and removed its unsafe wrong answers, at a fifth of the cost; the tradeoff is about a second more at p95.
 
 Every finding is in [DECISIONS.md](docs/DECISIONS.md) with its context, decision, tradeoff and result.
 
@@ -234,9 +257,9 @@ Every finding is in [DECISIONS.md](docs/DECISIONS.md) with its context, decision
 | Working with messy, real-world data | [Messy data handling](#how-it-handles-messy-real-world-data), `src/ingest.py`, Document library |
 | Building reliable AI retrieval | Property-filtered hybrid search, scope check, refusals, grounding check |
 | Measuring quality, not guessing | [Eval harness](eval/), [Results](#results), raw answers saved per run |
-| Debugging with evidence | [DECISIONS.md](docs/DECISIONS.md) 13–39: grader bugs, the $75 root cause, the Streamlit startup hang, an uninstallable pin, a Windows file race reproduced with two processes |
-| Shipping a product people can use | Multi-page app, streaming, light/dark, phone layout, white-label branding |
-| Production engineering habits | 208 tests, CI with audit and coverage gates, Docker, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
+| Debugging with evidence | [DECISIONS.md](docs/DECISIONS.md) 13–49: grader bugs, the $75 root cause, the Streamlit startup hang, an uninstallable pin, a Windows file race reproduced with two processes, a live-only crash reproduced by updating a running app in place |
+| Shipping a product people can use | In-app guidance tested on first-time visitor questions, multi-page app, streaming, light/dark, phone layout, white-label branding |
+| Production engineering habits | 274 tests, CI with audit and coverage gates, Docker, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
 | Translating tech into business value | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md), the Insights page for managers |
 
 ## Project structure
@@ -244,6 +267,7 @@ Every finding is in [DECISIONS.md](docs/DECISIONS.md) with its context, decision
 ```
 hotel-ops-assistant/
 ├── app.py                  # Streamlit entry point: navigation, theme, admin gating, error boundary
+├── codeguard.py            # After an in-place update, re-imports changed code together (decision 47)
 ├── run_app.ps1 · run_app.bat  # One-click local run on Windows
 ├── views/                  # Thin pages: assistant, insights, library, how it works, privacy, admin
 ├── src/                    # All logic, unit-tested
@@ -252,6 +276,7 @@ hotel-ops-assistant/
 │   ├── retrieve.py         # Property filter + hybrid search + scope signals
 │   ├── generate.py         # Prompt, streaming Claude call, citations, refusal detection
 │   ├── service.py          # One question end to end (scope, checks, usage record)
+│   ├── assist.py · intents.py · suggestions.py  # Greetings, recovery, curated follow-ups and topics
 │   ├── scope.py · escalation.py · grounding.py · gaps.py
 │   ├── chat.py · limits.py · usage.py · feedback.py · errors.py · admin.py · fileio.py
 │   ├── monitoring.py       # Health, warnings, activity table and CSV export for the Admin page
@@ -260,7 +285,8 @@ hotel-ops-assistant/
 ├── branding.toml           # White-label: product name, colors, properties, sample questions
 ├── assets/                 # Logo and favicon
 ├── data/raw/               # Hotel documents, one folder per property + shared/
-├── eval/                   # Labeled questions, metrics, runner, saved reports
+├── data/suggestions.toml   # Curated questions by topic and property (examples, follow-ups, Did you mean)
+├── eval/                   # Labeled and visitor questions, metrics, runners, saved reports
 ├── tests/                  # Unit tests
 ├── scripts/                # Business case, secrets.toml builder, demo video recorder, demo PDFs, screenshots
 ├── docs/                   # Architecture, decisions, business case, demo script, log, images
@@ -275,8 +301,7 @@ hotel-ops-assistant/
 
 **Requirements:** Python 3.12 and an [Anthropic API key](https://console.anthropic.com).
 
-**One click on Windows (after the first setup below):** double-click `run_app.bat`, or run `.
-un_app.ps1`. It uses the `.venv`, checks that `.env` exists, builds the index if it's missing, and opens the app at http://localhost:8501.
+**One click on Windows (after the first setup below):** double-click `run_app.bat`, or run `.\run_app.ps1`. It uses the `.venv`, checks that `.env` exists, builds the index if it's missing, and opens the app at http://localhost:8501.
 
 **Windows (PowerShell), first setup**
 ```powershell
@@ -354,19 +379,20 @@ The command-line tools (`ask.py`, the eval) read only the environment and `.env`
 | Install light core only (keyword search) | `pip install -r requirements.txt` | |
 | Build the search index | `python -m src.ingest` | `make index` |
 | Build index without embeddings | `python -m src.ingest --bm25-only` | |
-| Run the app with one click (Windows) | double-click `run_app.bat`, or `.
-un_app.ps1` | |
+| Run the app with one click (Windows) | double-click `run_app.bat`, or `.\run_app.ps1` | |
 | Run the web app | `streamlit run app.py` | `make app` |
 | Ask from the command line | `python ask.py beach-resort "Can a guest bring a dog?"` | `make demo` |
 | Unit tests with coverage | `python -m pytest -q --cov=src --cov=eval` | `make test` |
 | Retrieval, scope and escalation eval (free) | `python -m eval.run_eval` | `make eval` |
 | Same, keyword-only (live demo mode) | `python -m eval.run_eval --bm25-only` | |
 | Full eval with answers, 3 runs, with cost | `python -m eval.run_eval --answers --runs 3 --price-in 0.10 --price-out 0.50` | `make eval-answers` |
+| Visitor first-question eval (free routing; `--answers` uses the API; `--baseline` = before guidance) | `python -m eval.run_visitor_eval --bm25-only` | `make eval-visitors` |
+| Check every curated suggestion (free; `--answers` uses the API) | `python -m eval.run_suggestions_eval --bm25-only` | |
 | Lint and format check | `ruff check . && ruff format --check .` | `make lint` |
 | Dependency audit | `pip-audit -r requirements.txt` | `make audit` |
 | Business case scenarios | `python scripts/business_case.py --scenarios` | |
 | README screenshots and GIF (app running) | `python scripts/capture_screenshots.py` | |
-| Re-record the demo (live app, 5 real questions; needs ffmpeg) | `python scripts/record_demo.py` → `docs/video/demo.mp4` + `docs/images/demo.gif` (`--rebuild` reuses the last recording, `--web-out PATH` adds a web copy and poster) | |
+| Re-record the demo with narration (live app, 6 real questions; needs ffmpeg and piper-tts) | `python scripts/record_demo.py` → `docs/video/demo.mp4`, `demo.vtt`, `narration-script.txt` + `docs/images/demo.gif` (`--no-voice` for captions only, `--rebuild` reuses the last recording, `--web-out PATH` adds a web copy, poster and captions file) | `make video` |
 | Design-review screenshots, light/dark/phone | `python scripts/capture_review.py --phone` | |
 | Render command output as a terminal image | `python scripts/render_terminal.py out.txt image.png --command "..." --title "..."` | |
 | Regenerate demo PDFs | `python scripts/make_demo_pdfs.py` | `make pdfs` |
@@ -446,7 +472,7 @@ Streamlit Cloud keeps logs, the error list and the daily counter only until the 
 ## Testing and quality
 
 ```bash
-python -m pytest -q --cov=src --cov=eval   # 208 unit tests, 96.5% coverage
+python -m pytest -q --cov                 # 274 tests, 97% coverage
 python -m eval.run_eval                    # retrieval, scope and escalation eval (free)
 python -m eval.run_eval --answers --runs 3 --price-in 0.10 --price-out 0.50
 ruff check . && ruff format --check .      # lint and format
@@ -454,12 +480,12 @@ pip-audit -r requirements.txt              # known vulnerabilities
 ```
 
 <details>
-<summary>Test run: 208 passed, 96.5% coverage</summary>
+<summary>Test run: 274 passed, 97% coverage</summary>
 <br>
-<img src="docs/images/tests.png" alt="pytest output: 208 tests passed with 96.51% coverage" width="700">
+<img src="docs/images/tests.png" alt="pytest output: 274 tests passed with 97% coverage" width="700">
 </details>
 
-CI runs on the light install (no PyTorch): lint, format check, `pip-audit`, tests with a 70% minimum coverage, and a keyword-only retrieval regression gate (fails below 85%). Dependabot opens weekly update pull requests. Before release, a scripted Playwright QA pass clicked through every public page in light and dark mode at laptop and phone width (251 checks: links, text, limits, errors, admin lockout, console errors).
+CI runs on the light install (no PyTorch): lint, format check, `pip-audit`, tests with a 70% minimum coverage, a keyword-only retrieval regression gate (fails below 85%), the visitor first-question gate (fails below the measured 100%) and a check that every curated suggestion retrieves its topic. Dependabot opens weekly update pull requests. Before release, a scripted Playwright QA pass clicked through every public page in light and dark mode at laptop and phone width (251 checks: links, text, limits, errors, admin lockout, console errors).
 
 ## Security and privacy
 
@@ -470,7 +496,7 @@ Only synthetic policy documents are indexed; no guest or payment data. Each ques
 - **Spanish and other languages:** the embedding model is English-only (documented, not fixed).
 - **OCR** for scanned documents (currently flagged, not read).
 - **Live demo is keyword-only** on the free tier; the jacket and Spanish questions need hybrid.
-- **The eval questions were written by the same person who wrote the documents**, which flatters the scores; held-out questions are on the [validation checklist](docs/VALIDATION_CHECKLIST.md).
+- **The eval and visitor questions were written by the same person who wrote the documents**, which flatters the scores; held-out questions from people who haven't seen the documents are on the [validation checklist](docs/VALIDATION_CHECKLIST.md).
 - **Word-list grading** has known false positives; an LLM judge calibrated against human labels is **Project 3**.
 - **Sign-in with roles, personal-data redaction, durable logs and monitoring:** **Project 4**.
 - **Project 2** uses this assistant as a tool in a guest-email agent.
@@ -481,9 +507,9 @@ Only synthetic policy documents are indexed; no guest or payment data. Each ques
 |---|---|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System and request-flow diagrams, components, scaling path |
 | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md) | Value model, assumptions, policy gaps, pilot plan, KPIs, risks |
-| [DECISIONS.md](docs/DECISIONS.md) | 42 decisions with context, decision, tradeoff and result |
+| [DECISIONS.md](docs/DECISIONS.md) | 49 decisions with context, decision, tradeoff and result |
 | [ENGINEERING_LOG.md](docs/ENGINEERING_LOG.md) | What broke and how it was fixed, in my own words |
-| [DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Word-for-word 2-minute walkthrough |
+| [DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Word-for-word 2-minute walkthrough (the narrated video follows it) |
 | [VALIDATION_CHECKLIST.md](docs/VALIDATION_CHECKLIST.md) | Steps that need a person: measured baseline, held-out questions |
 | [SECURITY.md](SECURITY.md) | Data handling, threat model, OWASP LLM Top 10 mapping |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow, commit style, how to add documents, properties and eval questions |

@@ -2,6 +2,45 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] - 2026-10-10
+### Added
+- **In-app guidance** on the welcome screen (first visit and after every New conversation, both properties): a
+  "How to use" strip, a "What this demo knows" panel whose topic chips come from the indexed documents,
+  good-question examples with a tip, and a rotating "Try: …" hint in the chat input. Fits one laptop screen.
+- **Curated suggestions** (`data/suggestions.toml`): topic examples, 2-3 follow-ups under each answer (chosen by
+  the cited section's topic, never repeating a question), "Did you mean" after a refusal (closest curated
+  questions by keyword score) and the property's popular questions as a fallback. No extra API call.
+- **Greetings and meta questions** ("hi", "thanks", "what can you do?") get an instant reply with examples; no
+  API call and not counted toward the limits. Off-topic or gibberish input gets a polite scope message with
+  popular questions and topic chips.
+- **Content coverage:** three synthetic guest handbooks (brand-wide and one per property, effective 2026-04-01)
+  for Wi-Fi, early check-in, the gym, room service, breakfast, laundry, quiet hours, luggage, accessibility
+  and hiking. No existing fact changed.
+- **Visitor eval** (`eval/visitor_questions.jsonl`, 49 questions a visitor types first) with first-question
+  success: 43% → 100% keyword-only, 49% → 100% hybrid (real answers). CI gates its routing and retrieval at
+  100% and checks every curated suggestion retrieves its topic.
+- Question source logged with every question and rating; Insights shows how people ask, most-used topics,
+  typed policy gaps and suggestions that got a 👎; Admin shows the source and first-question success (live and
+  from the eval); How it works explains how the app helps users ask.
+- **Narrated demo video:** `scripts/record_demo.py` adds an AI voice (Piper, offline, open source) timed to each
+  step, mixed to about -16 LUFS, plus a WebVTT track and the narration script (`--no-voice` to skip).
+- README "See it in action" at the top; new screenshots from the live app; `make eval-visitors`, `make video`.
+
+### Changed
+- Search spells compound words one way in questions and documents (check-out/checkout, Wi-Fi/wifi) and adds a
+  short list of visitor synonyms to the query (gym → fitness, left → lost and found).
+- The model comparison was re-run on the new documents: Haiku 4.5 98% (96–98%) vs Haiku 5.5 97% (96–98%),
+  within run-to-run range; 5.5 stays shipped for about a fifth of the cost. The How it works caption follows the
+  data instead of a fixed sentence.
+- 54-question eval re-run: keyword-only 98% answer accuracy (was 96%), 44/45 retrieval, 27/27 refusals.
+
+### Fixed
+- On phones, the sidebar stayed open over the chat input after "New conversation", so nothing could be typed;
+  the input is now freed and focused (regression test).
+- After a push, the live app showed an error on every page: Streamlit Cloud's in-place update kept old modules
+  in memory. `codeguard.py` re-imports changed code together, and the index rebuilds when documents change.
+- Usage and feedback logs resolve their file at call time, so tests no longer write to the local log.
+
 ## [1.3.3] - 2026-10-10
 ### Added
 - Captioned 2-minute demo video, recorded from the live app with real answers by `python scripts/record_demo.py`

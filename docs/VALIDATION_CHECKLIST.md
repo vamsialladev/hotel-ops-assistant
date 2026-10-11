@@ -32,6 +32,8 @@ The same person wrote the documents and the eval questions, which flatters the s
 2. Add them to `eval/questions.jsonl` with category `held_out`, without changing the code first.
 3. Run the eval in both modes. Report the held-out score separately in the README.
 
+**Visitor questions:** also ask 3 or 4 people who haven't seen the documents to type their first 5 questions into the live app. Add them to `eval/visitor_questions.jsonl` with the expected behavior, and run `python -m eval.run_visitor_eval --bm25-only --answers`. Report the held-out first-question success separately (the current 100% is on questions I wrote).
+
 ## 3. Click through it yourself (about 15 minutes)
 Use the manual test checklist from the release summary on a laptop and a phone, in light and dark mode.
 

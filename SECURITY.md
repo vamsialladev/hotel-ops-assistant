@@ -38,6 +38,8 @@ per-property access is planned for Project 4.
 
 | Threat | Impact | Mitigation | Status |
 |---|---|---|---|
+| Suggestions that invent policy | A clicked suggestion asks something the documents can't answer, or states a made-up rule | Suggestions are never model-generated: a curated list, each question tested to retrieve its topic and get a real answer (test + CI gate) | Mitigated |
+| Page scripts | Script injection through the page | The only scripts (scroll, focus the input, close the phone sidebar) are fixed text in the code, never built from user input, documents or model output | Mitigated |
 | API key leak | Someone spends the owner's credit | Key only in `.env`, `.streamlit/secrets.toml` (generated, never printed) or Streamlit secrets; both files git- and docker-ignored; startup check and Admin page report only "set" or "missing"; pre-commit key check; GitHub secret scanning + push protection; key masked in error logs | Mitigated |
 | Cost abuse by visitors | API bill grows | 20 questions per session, 200 per day across all visitors (server-side, survives refresh), 500-character limit, off-topic questions refused before the API, `max_tokens` cap; owner sets a spending limit in the Anthropic Console | Mitigated; the daily count resets if the cloud app restarts |
 | Prompt injection in documents or questions | Wrong or harmful instructions followed (e.g. "waive all fees") | System prompt treats sources as data; a planted injection is in the eval and checked by hand every run; answers can't take actions | Partly mitigated: prompt rules reduce, not eliminate, the risk |
