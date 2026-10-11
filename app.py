@@ -3,10 +3,19 @@
 Pages live in views/ and stay thin; the logic is in src/ and unit-tested.
 """
 
-import streamlit as st
+from pathlib import Path
 
-from src.config import admin_password
-from views import components as ui
+import codeguard
+
+updated = codeguard.refresh(Path(__file__).parent)  # after an in-place update, never mix old and new modules
+
+import streamlit as st  # noqa: E402
+
+if updated:
+    st.cache_resource.clear()  # cached objects (the search index) were built by the old code
+
+from src.config import admin_password  # noqa: E402
+from views import components as ui  # noqa: E402
 
 b = ui.brand()
 st.set_page_config(page_title=b.name, page_icon=ui.asset(b.icon), layout="wide", initial_sidebar_state="auto")

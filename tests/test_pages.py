@@ -12,6 +12,7 @@ import time
 import pytest
 from streamlit.testing.v1 import AppTest
 
+import codeguard
 import src.errors as errors
 import src.feedback as feedback
 import src.generate
@@ -40,6 +41,8 @@ PAGES = {
 def app(tmp_path, monkeypatch):
     """The real app.py with logs in a temp folder, keyword-only search and an admin password set."""
     monkeypatch.setenv("ADMIN_PASSWORD", "test-only-password")
+    # The code hasn't changed during the test run: tell app.py's reload guard, so it keeps the (patched) modules.
+    monkeypatch.setenv(codeguard.STAMP_KEY, codeguard.code_stamp(ROOT))
     monkeypatch.setattr(usage, "USAGE_FILE", tmp_path / "usage.jsonl")
     monkeypatch.setattr(feedback, "FEEDBACK_FILE", tmp_path / "feedback.jsonl")
     monkeypatch.setattr(errors, "ERRORS_FILE", tmp_path / "errors.jsonl")
