@@ -123,6 +123,7 @@ def test_admin_health_shows_missing_secrets_by_name_only(app, monkeypatch):
     assert not at.exception
     text = html_text(at)
     assert "ANTHROPIC_API_KEY: missing" in text and "ADMIN_PASSWORD: set" in text
+    assert "First-question success (live)" in text and "First-question success (eval)" in text
     assert any("Required secret ANTHROPIC_API_KEY is missing" in w.value for w in at.warning)
     assert "test-only-password" not in text + " ".join(w.value for w in at.warning)
 
