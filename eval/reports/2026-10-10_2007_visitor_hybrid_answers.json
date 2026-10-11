@@ -1,0 +1,21 @@
+{
+  "mode": "hybrid",
+  "answers": true,
+  "pipeline": "current",
+  "date": "2026-10-10",
+  "model": "claude-haiku-5-5",
+  "questions": 49,
+  "first_question_success": 1.0,
+  "in_scope_answered": 1.0,
+  "out_of_scope_refused": 1.0,
+  "greetings_handled": 1.0,
+  "off_topic_handled": 1.0,
+  "refusals_with_suggestions": 1.0,
+  "counts": {
+    "answer": 35,
+    "refuse": 4,
+    "greeting": 5,
+    "offtopic": 5
+  },
+  "graded": 49
+}

@@ -28,3 +28,7 @@ jobs:
         run: |
           python -m src.ingest --bm25-only
           python -m eval.run_eval --bm25-only --min-hit 0.85 --no-report
+      - name: "Visitor questions gate: first-question routing and retrieval at the measured 100% (free)"
+        run: python -m eval.run_visitor_eval --bm25-only --min-success 1.0 --no-report
+      - name: Every curated suggestion retrieves a passage of its topic (free)
+        run: python -m eval.run_suggestions_eval --bm25-only

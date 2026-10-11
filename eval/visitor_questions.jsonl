@@ -1,0 +1,49 @@
+{"id": "v01", "property": "beach-resort", "question": "Is there Wi-Fi?", "expect": "answer", "expected_sources": ["beach-resort/guest_handbook.md", "beach-resort/policies.md", "shared/guest_handbook.md"], "must_contain_any": ["wi-fi", "wifi"]}
+{"id": "v02", "property": "beach-resort", "question": "What time is check-in?", "expect": "answer", "expected_sources": ["shared/brand_standards.md"], "must_contain": ["3:00"]}
+{"id": "v03", "property": "beach-resort", "question": "What time is checkout?", "expect": "answer", "expected_sources": ["shared/brand_standards.md", "beach-resort/policies.md"], "must_contain": ["11:00"]}
+{"id": "v04", "property": "beach-resort", "question": "What time is breakfast?", "expect": "answer", "expected_sources": ["beach-resort/restaurant_menu.pdf"], "must_contain": ["6:30"]}
+{"id": "v05", "property": "beach-resort", "question": "Is there a gym?", "expect": "answer", "expected_sources": ["beach-resort/guest_handbook.md"], "must_contain": ["24 hours"]}
+{"id": "v06", "property": "beach-resort", "question": "What are the pool hours?", "expect": "answer", "expected_sources": ["beach-resort/policies.md"], "must_contain": ["7:00", "10:00"]}
+{"id": "v07", "property": "beach-resort", "question": "How much is parking?", "expect": "answer", "expected_sources": ["beach-resort/policies.md"], "must_contain": ["45"]}
+{"id": "v08", "property": "beach-resort", "question": "Do you allow pets?", "expect": "answer", "expected_sources": ["beach-resort/policies.md"], "must_contain": ["40"]}
+{"id": "v09", "property": "beach-resort", "question": "Is room service available?", "expect": "answer", "expected_sources": ["beach-resort/restaurant_menu.pdf", "beach-resort/guest_handbook.md"], "must_contain": ["11:00"]}
+{"id": "v10", "property": "beach-resort", "question": "Can I check in early?", "expect": "answer", "expected_sources": ["beach-resort/guest_handbook.md", "shared/guest_handbook.md"], "must_contain": ["12:00"]}
+{"id": "v11", "property": "beach-resort", "question": "What is the cancellation policy?", "expect": "answer", "expected_sources": ["shared/brand_standards.md"], "must_contain": ["48 hours"]}
+{"id": "v12", "property": "beach-resort", "question": "Can guests smoke on the balcony?", "expect": "answer", "expected_sources": ["shared/brand_standards.md"], "must_contain_any": ["non-smoking", "not allowed", "no smoking", "not permitted"]}
+{"id": "v13", "property": "beach-resort", "question": "Do you have an airport shuttle?", "expect": "answer", "expected_sources": ["beach-resort/policies.md"], "must_contain": ["MIA"]}
+{"id": "v14", "property": "beach-resort", "question": "Where can I leave my luggage after checkout?", "expect": "answer", "expected_sources": ["shared/guest_handbook.md"], "must_contain": ["front desk"]}
+{"id": "v15", "property": "beach-resort", "question": "Is there a laundry service?", "expect": "answer", "expected_sources": ["beach-resort/guest_handbook.md"], "must_contain": ["9:00"]}
+{"id": "v16", "property": "beach-resort", "question": "What are the quiet hours?", "expect": "answer", "expected_sources": ["beach-resort/guest_handbook.md"], "must_contain": ["11:00"]}
+{"id": "v17", "property": "beach-resort", "question": "Do you have accessible rooms?", "expect": "answer", "expected_sources": ["shared/guest_handbook.md"], "must_contain": ["roll-in"]}
+{"id": "v18", "property": "beach-resort", "question": "How does the loyalty program work?", "expect": "answer", "expected_sources": ["shared/loyalty_program.md"], "must_contain_any": ["silver", "gold", "platinum", "points"]}
+{"id": "v19", "property": "beach-resort", "question": "What does the resort fee include?", "expect": "answer", "expected_sources": ["beach-resort/policies.md"], "must_contain": ["35"]}
+{"id": "v20", "property": "beach-resort", "question": "What are the spa hours?", "expect": "answer", "expected_sources": ["beach-resort/spa_menu.md"], "must_contain": ["9:00"]}
+{"id": "v21", "property": "mountain-lodge", "question": "Is there Wi-Fi?", "expect": "answer", "expected_sources": ["mountain-lodge/guest_handbook.md", "shared/guest_handbook.md"], "must_contain_any": ["wi-fi", "wifi"]}
+{"id": "v22", "property": "mountain-lodge", "question": "What time is checkout?", "expect": "answer", "expected_sources": ["shared/brand_standards.md"], "must_contain": ["11:00"]}
+{"id": "v23", "property": "mountain-lodge", "question": "Is breakfast included?", "expect": "answer", "expected_sources": ["mountain-lodge/guest_handbook.md"], "must_contain": ["7:00"]}
+{"id": "v24", "property": "mountain-lodge", "question": "Is there a pool?", "expect": "answer", "expected_sources": ["mountain-lodge/policies.md"], "must_contain_any": ["partner", "does not", "doesn't", "no on-site"]}
+{"id": "v25", "property": "mountain-lodge", "question": "Is there a gym?", "expect": "answer", "expected_sources": ["mountain-lodge/policies.md"], "must_contain": ["partner"]}
+{"id": "v26", "property": "mountain-lodge", "question": "Can I bring my dog?", "expect": "answer", "expected_sources": ["mountain-lodge/policies.md"], "must_contain": ["50"]}
+{"id": "v27", "property": "mountain-lodge", "question": "Is parking free?", "expect": "answer", "expected_sources": ["mountain-lodge/policies.md"], "must_contain": ["free"]}
+{"id": "v28", "property": "mountain-lodge", "question": "What are the quiet hours?", "expect": "answer", "expected_sources": ["mountain-lodge/policies.md"], "must_contain": ["10:00"]}
+{"id": "v29", "property": "mountain-lodge", "question": "Do you have an airport shuttle?", "expect": "answer", "expected_sources": ["mountain-lodge/policies.md"], "must_contain": ["35"]}
+{"id": "v30", "property": "mountain-lodge", "question": "Can I check in early?", "expect": "answer", "expected_sources": ["mountain-lodge/front_desk_notes.txt", "mountain-lodge/guest_handbook.md", "shared/guest_handbook.md"], "must_contain_any": ["25", "availability", "ready"]}
+{"id": "v31", "property": "mountain-lodge", "question": "Is there a laundry room?", "expect": "answer", "expected_sources": ["mountain-lodge/guest_handbook.md"], "must_contain": ["coin"]}
+{"id": "v32", "property": "mountain-lodge", "question": "Can we host a wedding here?", "expect": "answer", "expected_sources": ["mountain-lodge/events_weddings.pdf"], "must_contain_any": ["150", "60", "deposit"]}
+{"id": "v33", "property": "mountain-lodge", "question": "I left something in my room. What happens to it?", "expect": "answer", "expected_sources": ["shared/housekeeping_sop.md"], "must_contain": ["90"]}
+{"id": "v34", "property": "mountain-lodge", "question": "How do I earn loyalty points?", "expect": "answer", "expected_sources": ["shared/loyalty_program.md"], "must_contain": ["10 points"]}
+{"id": "v35", "property": "mountain-lodge", "question": "Are there hiking trails nearby?", "expect": "answer", "expected_sources": ["mountain-lodge/guest_handbook.md"], "must_contain_any": ["trail"]}
+{"id": "v36", "property": "beach-resort", "question": "Can you book me a room for next Friday?", "expect": "refuse"}
+{"id": "v37", "property": "beach-resort", "question": "What room is John Smith staying in?", "expect": "refuse"}
+{"id": "v38", "property": "mountain-lodge", "question": "Can you look up my reservation?", "expect": "refuse"}
+{"id": "v39", "property": "mountain-lodge", "question": "What credit card does the guest in room 214 have on file?", "expect": "refuse"}
+{"id": "v40", "property": "beach-resort", "question": "hi", "expect": "greeting"}
+{"id": "v41", "property": "mountain-lodge", "question": "hello", "expect": "greeting"}
+{"id": "v42", "property": "beach-resort", "question": "thanks", "expect": "greeting"}
+{"id": "v43", "property": "mountain-lodge", "question": "what can you do?", "expect": "greeting"}
+{"id": "v44", "property": "beach-resort", "question": "help", "expect": "greeting"}
+{"id": "v45", "property": "beach-resort", "question": "asdfgh", "expect": "offtopic"}
+{"id": "v46", "property": "mountain-lodge", "question": "weather today", "expect": "offtopic"}
+{"id": "v47", "property": "beach-resort", "question": "tell me a joke", "expect": "offtopic"}
+{"id": "v48", "property": "mountain-lodge", "question": "What is the capital of France?", "expect": "offtopic"}
+{"id": "v49", "property": "beach-resort", "question": "banana", "expect": "offtopic"}
