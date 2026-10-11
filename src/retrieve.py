@@ -32,12 +32,53 @@ def stem(word: str) -> str:
     return word
 
 
+# One spelling for compound words, in documents and questions alike: "check-out", "check out" and "checkout"
+# all become "checkout". Found via the visitor eval: "What time is checkout?" matched nothing.
+COMPOUNDS = [(re.compile(r"\bcheck[\s-]+(in|out)\b"), r"check\1"), (re.compile(r"\bwi[\s-]?fi\b"), "wifi")]
+
+# Words visitors type that the documents say differently. Added to the query only (never the documents),
+# for keyword search and the scope check. Found via the visitor eval: "gym" never matched "fitness center"
+# and "I left something" never matched "Lost and Found".
+SYNONYMS = {
+    "internet": "wifi",
+    "gym": "fitness",
+    "workout": "fitness",
+    "exercise": "fitness",
+    "left": "lost found",
+    "forgot": "lost found",
+    "forgotten": "lost found",
+    "lost": "found",
+    "bags": "luggage",
+    "baggage": "luggage",
+    "suitcase": "luggage",
+    "wheelchair": "accessible accessibility",
+    "disabled": "accessible accessibility",
+    "disability": "accessible accessibility",
+    "hike": "hiking trail",
+    "hiking": "trail",
+    "shuttle": "airport transfer",
+    "cancel": "cancellation",
+    "noise": "quiet",
+    "loud": "quiet noise",
+    "washing": "laundry",
+    "eat": "dining restaurant breakfast",
+    "food": "dining restaurant",
+}
+
+
+def expand_query(text: str) -> str:
+    """The question plus the document-side words for any synonyms it uses."""
+    extra = [SYNONYMS[w] for w in re.findall(r"[a-z]+", text.lower()) if w in SYNONYMS]
+    return f"{text} {' '.join(extra)}" if extra else text
+
+
 def tokenize(text: str):
     # Single letters ("s" from "guest's", "a") carry no meaning but matched almost every passage.
+    text = text.lower()
+    for pattern, replacement in COMPOUNDS:
+        text = pattern.sub(replacement, text)
     return [
-        stem(t)
-        for t in re.findall(r"[a-z0-9$:]+", text.lower())
-        if t not in STOPWORDS and not (len(t) == 1 and t.isalpha())
+        stem(t) for t in re.findall(r"[a-z0-9$:]+", text) if t not in STOPWORDS and not (len(t) == 1 and t.isalpha())
     ]
 
 
@@ -69,7 +110,7 @@ class Retriever:
         """How well the question matches this property's documents, used by the scope check:
         number of passages sharing a keyword, and (hybrid only) the best meaning similarity."""
         allowed = [i for i, c in enumerate(self.chunks) if c["property"] in (prop, SHARED)]
-        scores = self.bm25.get_scores(tokenize(query))
+        scores = self.bm25.get_scores(tokenize(expand_query(query)))
         best = None
         if self.model is not None:
             q = self.model.encode([query], normalize_embeddings=True)[0]
@@ -79,7 +120,7 @@ class Retriever:
     def search(self, query: str, prop: str, k: int = TOP_K):
         allowed = [i for i, c in enumerate(self.chunks) if c["property"] in (prop, SHARED)]
 
-        bm25_scores = self.bm25.get_scores(tokenize(query))
+        bm25_scores = self.bm25.get_scores(tokenize(expand_query(query)))
         # Only passages that match at least one keyword; a zero score is not a match.
         matched = [i for i in allowed if bm25_scores[i] > 0]
         rankings = [sorted(matched, key=lambda i: -bm25_scores[i])]
