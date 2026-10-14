@@ -4,6 +4,8 @@
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 ![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
+![Coverage 97%](https://img.shields.io/badge/coverage-97%25-brightgreen)
+[![Live demo](https://img.shields.io/badge/live%20demo-streamlit-FF4B4B)](https://hotel-ops-assistant.streamlit.app)
 
 ## See it in action
 
@@ -13,9 +15,10 @@
 
 **An AI assistant that gives hotel front-desk staff correct, property-specific policy answers in seconds, with the source for every fact.**
 
-> **Project 1 of 5** in my Forward Deployed Engineer portfolio. This is a *simulated client engagement*: a fictional hotel group with two properties, a beach resort and a mountain lodge. All documents are synthetic and written to mirror real hotel operations. Business value is a projection from stated assumptions, not a measured result.
+> **Project 1 of 5** in my portfolio. This is a *simulated client engagement*: a fictional hotel group with two properties, a beach resort and a mountain lodge. All documents are synthetic and written to mirror real hotel operations. Business value is a projection from stated assumptions, not a measured result.
 
 🔗 **[Live demo](https://hotel-ops-assistant.streamlit.app)** (open to everyone, no sign-in) · 📄 **[Case study](https://vamsialla.com/projects/hotel-ops-assistant.html)** · 💰 **[Business case](docs/BUSINESS_CASE.md)** · 🏗️ **[Architecture](docs/ARCHITECTURE.md)** · 🎥 **[2-minute demo video](https://vamsialla.com/videos/hotel-ops-demo.mp4)** (narrated, captioned)
+<sub>Free hosting: if the app is asleep, click ‘wake up’ and give it about 30 seconds.</sub>
 
 ---
 
