@@ -11,6 +11,7 @@ import time
 import anthropic
 
 from src.config import LLM_EFFORT, LLM_MAX_TOKENS, LLM_MODEL
+from src.language import LANGUAGE_NAMES, detect_language
 
 NOT_FOUND = "I couldn't find this in the hotel's documents. Please check with a manager."
 
@@ -33,6 +34,9 @@ Rules:
   sentence and nothing else: "{NOT_FOUND}" Do not guess.
 - If the sources answer only part of the question, answer that part with citations and say in your own
   words what to check with a manager. Never combine the exact sentence above with an answer.
+- Write the answer in the language of the question. The sources are in English: translate their facts
+  faithfully and keep every number, time and [n] citation. A refusal is always the exact English
+  sentence above, whatever the language.
 - Be brief: 1-4 sentences in plain language."""
 
 
@@ -48,12 +52,23 @@ def readable_property(prop: str) -> str:
     return "Brand-wide (shared)" if prop == "shared" else prop.replace("-", " ").title()
 
 
+def question_text(question: str) -> str:
+    """The question as sent to the model, with the detected language stated when it isn't English (Project 4:
+    a Spanish question gets a Spanish answer from the English documents)."""
+    lang = detect_language(question)
+    if lang == "en":
+        return question
+    return f"{question}\n\n(The question is in {LANGUAGE_NAMES[lang]}: answer in {LANGUAGE_NAMES[lang]}.)"
+
+
 def build_request(question: str, prop: str, chunks: list) -> dict:
     request = {
         "model": LLM_MODEL,
         "max_tokens": LLM_MAX_TOKENS,
         "system": SYSTEM.format(property=prop, property_name=readable_property(prop)),
-        "messages": [{"role": "user", "content": f"Sources:\n{format_sources(chunks)}\n\nQuestion: {question}"}],
+        "messages": [
+            {"role": "user", "content": f"Sources:\n{format_sources(chunks)}\n\nQuestion: {question_text(question)}"}
+        ],
     }
     if LLM_EFFORT:
         request["output_config"] = {"effort": LLM_EFFORT}

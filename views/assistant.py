@@ -319,7 +319,7 @@ def handle(raw: str, prop: str, source: str = "typed"):
     with st.chat_message("assistant", avatar=BOT_AVATAR):
         prep = service.prepare(retriever, question, prop)
         if prep["blocked"]:  # off-topic or gibberish: answered without an API call
-            turn.result = service.finalize(question, prop, service.blocked_result())
+            turn.result = service.finalize(question, prop, service.blocked_result(question))
             finish(turn, "scope", pre_api=True)
         elif not ui.daily_counter().try_consume():
             turn.error = DAILY_LIMIT

@@ -14,6 +14,16 @@ SCOPE_MESSAGE = (
     "anything about this in the hotel's documents. If it's a hotel question, please check with a manager."
 )
 
+# Shown instead of SCOPE_MESSAGE when the question is in Spanish (Project 4).
+SCOPE_MESSAGE_ES = (
+    "Solo puedo ayudar con las políticas, tarifas, servicios y procedimientos de este hotel, y no encontré nada "
+    "sobre esto en sus documentos. Si es una pregunta sobre el hotel, consulte con un gerente."
+)
+
+
+def scope_message(language: str) -> str:
+    return SCOPE_MESSAGE_ES if language == "es" else SCOPE_MESSAGE
+
 
 def in_scope(signals: dict, min_similarity: float) -> bool:
     if signals["keyword_matches"] > 0:

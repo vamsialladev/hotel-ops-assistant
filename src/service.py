@@ -6,8 +6,9 @@ from src.config import LLM_MAX_TOKENS, LLM_MODEL, PRICE_IN_PER_M, PRICE_OUT_PER_
 from src.display import section_name
 from src.escalation import escalations
 from src.grounding import ungrounded_numbers
+from src.language import detect_language
 from src.requestlog import SCHEMA_VERSION, outcome_of, refusal_reason
-from src.scope import SCOPE_MESSAGE, in_scope
+from src.scope import in_scope, scope_message
 from src.usage import estimate_cost
 
 
@@ -20,9 +21,9 @@ def prepare(retriever, question: str, prop: str, k: int = TOP_K, min_similarity:
     return {"blocked": not hits, "hits": hits, "signals": signals}
 
 
-def blocked_result() -> dict:
+def blocked_result(question: str = "") -> dict:
     return {
-        "answer": SCOPE_MESSAGE,
+        "answer": scope_message(detect_language(question)),
         "found": False,
         "citations": [],
         "usage": {"input_tokens": 0, "output_tokens": 0},
@@ -39,6 +40,7 @@ def finalize(question: str, prop: str, result: dict) -> dict:
         "ungrounded": [] if refused else ungrounded_numbers(result["answer"], cited, question),
         "escalations": [r.id for r in escalations(question, prop, refused=refused)],
         "topic": section_name(cited[0]) if cited else None,
+        "language": detect_language(question),
     }
 
 

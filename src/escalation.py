@@ -8,6 +8,8 @@ so the same question always gets the same note, with no extra API call.
 import re
 from dataclasses import dataclass
 
+from src.retrieve import fold_accents
+
 COURTESY_LIMIT = 50  # brand_standards.md: credits up to $50 without approval
 MANAGER_LIMIT = 200  # brand_standards.md: over $200 needs the Manager on Duty
 
@@ -80,6 +82,28 @@ SAFETY_TERMS = re.compile(
     r"tornado|bomb|threat\w*|weapon\w*|intruder|active shooter|cardiac|unconscious)\b",
     re.I,
 )
+# Project 4 (decision 52): paraphrases staff actually type, and Spanish. Matched on accent-free lowercase text, so
+# "incendio", "sangrando" and "se desmayó" match with or without accents. Smoking-policy words ("smoke on the
+# balcony", "fumar") are deliberately absent; a test runs every non-safety question in the evals through this and
+# requires zero false alarms.
+SAFETY_PARAPHRASES = re.compile(
+    r"\b(smoke (?:is )?(?:coming|pouring|filling|from|under|in the (?:hall\w*|corridor|kitchen|lobby|room|stair\w*))|"
+    r"smell(?:s|ing)? (?:of )?(?:smoke|gas|burning)|burning smell|on fire|flames?|carbon monoxide|co alarm|"
+    r"not breathing|stopped breathing|(?:isn['’]?t|is not|not) responding|unresponsive|collapsed|passed out|fainted|"
+    r"bleeding|seizure|heart attack|chest pains?|choking|overdose|allergic reaction|anaphyla\w*|drowning|"
+    r"stuck in (?:the|an) (?:elevator|lift)|trapped|call 911|police|"
+    # Spanish
+    r"incendio\w*|fuego|humo|en llamas|alarma de incendio|emergencia\w*|evacua\w*|ambulancia|herid[oa]s?|"
+    r"lesion\w*|sangr\w*|inconsciente|desmay\w*|no respira|ataque (?:cardiaco|al corazon)|convulsion\w*|"
+    r"fuga de gas|(?:olor a|huele a) (?:gas|humo|quemado)|inundacion|terremoto|amenaza\w*|armas?|urgencias|"
+    r"primeros auxilios|policia|"
+    # French (a few, the most common)
+    r"incendie|fumee|urgence|blesse\w*)\b"
+)
+
+
+def is_safety(question: str) -> bool:
+    return bool(SAFETY_TERMS.search(question) or SAFETY_PARAPHRASES.search(fold_accents(question)))
 
 
 def amounts(question: str) -> list[float]:
@@ -92,7 +116,7 @@ def amounts(question: str) -> list[float]:
 def escalations(question: str, prop: str, refused: bool = False) -> list[Rule]:
     """Rules that apply to this question at this property, most important first."""
     found = []
-    if SAFETY_TERMS.search(question):
+    if is_safety(question):
         found.append(SAFETY)
     if MONEY_BACK.search(question) or NONREFUNDABLE.search(question):
         if NONREFUNDABLE.search(question):

@@ -97,7 +97,7 @@ def main():
                 prep = prepared[item["id"]]
                 asked += 1
                 if prep["blocked"]:
-                    result = blocked_result()
+                    result = blocked_result(item["question"])
                 else:
                     stream = AnswerStream(item["question"], item["property"], prep["hits"])
                     result = stream.run()
