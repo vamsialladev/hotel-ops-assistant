@@ -4,17 +4,20 @@ then grounding, escalation and the usage record after it. The app page only wire
 
 from src.config import LLM_MAX_TOKENS, LLM_MODEL, PRICE_IN_PER_M, PRICE_OUT_PER_M, SCOPE_MIN_SIMILARITY, TOP_K
 from src.display import section_name
-from src.escalation import escalations
+from src.escalation import escalations, is_safety
 from src.grounding import ungrounded_numbers
 from src.language import detect_language
 from src.requestlog import SCHEMA_VERSION, outcome_of, refusal_reason
-from src.scope import in_scope, scope_message
+from src.scope import in_scope, safety_message, scope_message
 from src.usage import estimate_cost
 
 
 def prepare(retriever, question: str, prop: str, k: int = TOP_K, min_similarity: float = SCOPE_MIN_SIMILARITY):
-    """Retrieval plus the scope check. `blocked` means: answer without calling the API."""
+    """Retrieval plus the scope check. `blocked` means: answer without calling the API (off-topic, or an
+    emergency: `safety`)."""
     signals = retriever.signals(question, prop)
+    if is_safety(question):
+        return {"blocked": True, "safety": True, "hits": [], "signals": signals}
     if not in_scope(signals, min_similarity):
         return {"blocked": True, "hits": [], "signals": signals}
     hits = retriever.search(question, prop, k=k)
@@ -22,8 +25,11 @@ def prepare(retriever, question: str, prop: str, k: int = TOP_K, min_similarity:
 
 
 def blocked_result(question: str = "") -> dict:
+    safety = is_safety(question)
+    message = safety_message if safety else scope_message
     return {
-        "answer": scope_message(detect_language(question)),
+        "answer": message(detect_language(question)),
+        "safety_blocked": safety,
         "found": False,
         "citations": [],
         "usage": {"input_tokens": 0, "output_tokens": 0},

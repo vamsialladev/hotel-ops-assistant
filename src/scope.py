@@ -20,6 +20,23 @@ SCOPE_MESSAGE_ES = (
     "sobre esto en sus documentos. Si es una pregunta sobre el hotel, consulte con un gerente."
 )
 
+# Emergencies never wait for the model (Project 4, decision 53): the documents have no readable emergency
+# procedure, so the answer is always this message plus the safety manager note, with no API call.
+SAFETY_MESSAGE = (
+    "This sounds like an emergency. If anyone may be in danger, call emergency services (911) now, follow the "
+    "hotel's posted emergency procedures and contact the Manager on Duty. The assistant has no emergency "
+    "procedure it can read, so it won't guess."
+)
+SAFETY_MESSAGE_ES = (
+    "Esto parece una emergencia. Si alguien puede estar en peligro, llame ahora a los servicios de emergencia "
+    "(911), siga los procedimientos de emergencia publicados del hotel y avise al gerente de turno. El asistente "
+    "no tiene ningún procedimiento de emergencia que pueda leer, así que no adivinará."
+)
+
+
+def safety_message(language: str) -> str:
+    return SAFETY_MESSAGE_ES if language == "es" else SAFETY_MESSAGE
+
 
 def scope_message(language: str) -> str:
     return SCOPE_MESSAGE_ES if language == "es" else SCOPE_MESSAGE

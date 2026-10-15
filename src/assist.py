@@ -21,6 +21,8 @@ def route(retriever, question: str, prop: str) -> dict:
     if intent:
         return {"kind": "greeting", "intent": intent}
     prep = service.prepare(retriever, question, prop)
+    if prep.get("safety"):
+        return {"kind": "safety", "prep": prep}
     return {"kind": "scope" if prep["blocked"] else "ask", "prep": prep}
 
 
@@ -47,6 +49,9 @@ def respond(retriever, question: str, prop: str, use_api: bool = True, asked=())
             "hits": [],
             "suggestions": qs,
         }
+    if routed["kind"] == "safety":  # emergency: fixed message and the manager note, no API call
+        result = service.blocked_result(question)
+        return {**result, "kind": "refusal", "hits": [], "suggestions": []}
     if routed["kind"] == "scope":
         _, qs = suggestions_after("scope", question, prop, asked=asked)
         return {"kind": "scope", "answer": "", "citations": [], "hits": [], "suggestions": qs}

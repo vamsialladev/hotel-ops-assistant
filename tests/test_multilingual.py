@@ -185,3 +185,20 @@ def test_old_safety_terms_alone_missed_the_held_out_emergencies():
     """Before Project 4 only SAFETY_TERMS existed: it misses a12 and a13 (so the new cases really test the fix)."""
     assert not escalation.SAFETY_TERMS.search(EMERGENCIES[0])
     assert not escalation.SAFETY_TERMS.search(EMERGENCIES[1])
+
+
+def test_emergencies_skip_the_model_and_get_the_safety_message(retriever, monkeypatch):
+    """Decision 53: an emergency never waits for (or depends on) the model."""
+    import src.generate
+    from src.assist import respond
+    from src.scope import SAFETY_MESSAGE, SAFETY_MESSAGE_ES
+
+    monkeypatch.setattr(src.generate, "answer", lambda *a, **k: pytest.fail("the model must not be called"))
+    prep = prepare(retriever, EMERGENCIES[0], "beach-resort")
+    assert prep["blocked"] and prep["safety"] and prep["hits"] == []
+    out = respond(retriever, EMERGENCIES[0], "beach-resort")
+    assert out["kind"] == "refusal" and out["answer"] == SAFETY_MESSAGE and out["safety_blocked"]
+    assert blocked_result(EMERGENCIES[1])["answer"] == SAFETY_MESSAGE_ES
+    final = finalize(EMERGENCIES[1], "mountain-lodge", blocked_result(EMERGENCIES[1]))
+    assert final["escalations"] == ["safety"] and final["found"] is False
+    assert not prepare(retriever, "Can guests smoke on the balcony?", "mountain-lodge").get("safety")
