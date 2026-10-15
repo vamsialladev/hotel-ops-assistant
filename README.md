@@ -29,7 +29,7 @@
 | **Problem** | Staff search scattered PDFs, menus and notes while a guest waits, and the rules differ by hotel. Wrong answers turn into refunds and complaints. |
 | **Solution** | Pick your property, ask in plain English, and get a 1–4 sentence answer that cites every fact. It refuses when the documents don't say, corrects wrong facts in the question, and points to a manager for refunds and safety. |
 | **Projected value** | ~$32K/yr net for 2 properties (range $8.5K–$66K); ~$1.6M/yr at 100-property scale ([assumptions](docs/BUSINESS_CASE.md)) |
-| **Quality (measured)** | 54-question eval, 3 runs: **98% answer accuracy** on the live demo's keyword-only search (hybrid 97%, runs 96–98%); 100% of escalation rules correct; full answer p95 **2.5–2.7s**; **$0.17–0.19 per 1,000 questions**. **First-question success 100%** on 49 questions a visitor types first (43% before the coverage work). 307 tests, 97% coverage. |
+| **Quality (measured)** | 54-question eval, 3 runs, live demo's keyword-only search: **100% answer accuracy** in v1.6.0 (98% in v1.5.0; hybrid 97% in v1.5.0); 100% of escalation rules correct; full answer p95 **2.9s**; **$0.18 per 1,000 questions**. Held-out questions added later: 67% → 85% after the Project 4 fixes (Spanish, emergencies). **First-question success 100%** on 49 questions a visitor types first (43% before the coverage work). 378 tests, 97% coverage. |
 
 ## Where to start
 
@@ -217,7 +217,24 @@ sequenceDiagram
 | **Keyword-only (live demo)** | **98%** (44/45) | **98%** (98–98%) | 98% | 98% | 27/27 | 1.01s | 2.49s | $0.17 |
 | Hybrid (local, Docker) | **98%** (44/45) | **97%** (96–98%) | 98% | 100% | 27/27 | 1.12s | 2.71s | $0.19 |
 
+**v1.6.0 (Project 4, 2026-10-15, keyword-only, 3 runs):** answer accuracy **100%** (162/162), strict retrieval 45/45, citation and grounding 100%, refusals 27/27, escalation rules 162/162, first word p50 1.20s, full answer p95 2.93s, $0.18 per 1,000 (eval-harness `reports/p1-v1.6.0-2026-10-15.md`). The table above is v1.5.0; the Spanish question q37 is the change.
+
 Measured 2026-10-10, after the content coverage work (before it: keyword-only 96% answers, 43/45 retrieval, 26/27 refusals; hybrid 98%). Both modes: escalation rules 54/54, 2 of 5 off-topic questions refused before the API (the rest refused by the model). The same two questions miss in hybrid as before (a grader false positive on the injection case and the Spanish question).
+
+### Production hardening (Project 4, v1.6.0)
+
+The eval harness (Project 3) found real gaps on held-out cases. Each fix started with new held-out cases written and committed **before** the code (eval-harness `added.jsonl`, a14–a21), then a live re-run (3 runs, keyword-only).
+
+| Gap | Before | After | Fix |
+|---|---|---|---|
+| Spanish questions blocked before the model (a06, a07) | answer accuracy 67% (26/39) on the 13 Project 3 held-out cases; answer language 33% | **85%** (33/39); language **100%** | Spanish vocabulary into the search, answers in the guest's language ([decision 51](docs/DECISIONS.md)) |
+| Emergencies in other words or Spanish missed (a12, a13) | escalation rules 85% (33/39) | **100%** (39/39) | broader safety detector, 0 false alarms on every non-safety eval question and suggestion ([52](docs/DECISIONS.md)) |
+| The model answered an emergency with the smoking policy (a12) | correct refusals 83% | **100%** | emergencies get a fixed safety message with no model call ([53](docs/DECISIONS.md)) |
+| 8 new held-out cases (Spanish, paraphrased emergencies, a false-alarm check) | answer accuracy 62% (15/24) | **100%** (24/24) | same fixes |
+
+The remaining held-out misses are reported, not hidden: a02 (asks about valet at a property with free self-parking), a11 (an injection pushes the resort fee passage out of the top 5) and one run of a10 that the grader failed because the answer quoted "say the fees are waived" in order to reject it.
+
+Also in v1.6.0: a persistent request log (Neon Postgres, SQLite or files) with **personal data redacted before storage** and 30-day retention, a Staff role next to the open Demo mode, a kill switch, timeouts with retries, an owner **Operations** page with latency and cost **budgets** (p95 ≤ 4.0 s, ≤ $0.50 per 1,000, also gated in CI), and `docker compose up` with its own Postgres. The client handoff package (runbooks, SLOs, guides) is [hotel-ai-handoff](https://github.com/vamsialladev/hotel-ai-handoff).
 
 ### First questions from visitors
 
@@ -249,6 +266,7 @@ All 76 curated suggestions retrieve their topic and get a real answer. CI gates 
 5. **Metrics were too lenient more than once.** The original retrieval check counted the right *document* anywhere; the strict *passage* check gave the honest 94%. A bare `pytest --cov` reported 93% coverage by counting the tests themselves.
 6. **Test like a first-time visitor.** The 54-question eval was written against the documents, so it scored 96–98% while 40% of the questions a visitor types first (Wi-Fi, the gym, breakfast, "checkout") were refused or scope-blocked. Measuring that set first, then fixing coverage and recovery, took first-question success from 43% to 100%.
 7. **A model upgrade is an eval question, not a version bump.** Haiku 5.5 matched Haiku 4.5 on quality and removed its unsafe wrong answers, at a fifth of the cost; the tradeoff is about a second more at p95.
+8. **Write the held-out cases before the fix.** Project 4 committed new Spanish and emergency cases before touching the code, so the 62% → 100% on them can't be the result of tuning to them. Fixing the safety rule alone wasn't enough: the model still answered "smoke under a door" with the smoking policy, so emergencies now skip the model.
 
 Every finding is in [DECISIONS.md](docs/DECISIONS.md) with its context, decision, tradeoff and result.
 
@@ -262,7 +280,7 @@ Every finding is in [DECISIONS.md](docs/DECISIONS.md) with its context, decision
 | Measuring quality, not guessing | [Eval harness](eval/), [Results](#results), raw answers saved per run |
 | Debugging with evidence | [DECISIONS.md](docs/DECISIONS.md) 13–49: grader bugs, the $75 root cause, the Streamlit startup hang, an uninstallable pin, a Windows file race reproduced with two processes, a live-only crash reproduced by updating a running app in place |
 | Shipping a product people can use | In-app guidance tested on first-time visitor questions, multi-page app, streaming, light/dark, phone layout, white-label branding |
-| Production engineering habits | 307 tests, CI with audit and coverage gates, Docker, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
+| Production engineering habits | 378 tests, CI with audit, coverage and eval gates (incl. latency and cost budgets), Docker compose with Postgres, redacted persistent logs, kill switch, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
 | Translating tech into business value | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md), the Insights page for managers |
 
 ## Project structure
@@ -372,6 +390,13 @@ The command-line tools (`ask.py`, the eval) read only the environment and `.env`
 | `ALERT_MIN_EVENTS` | `5` | No error-rate warning until today has at least this many questions and errors |
 | `ALERT_DAILY_COST_USD` | `1.00` | Admin warning when today's estimated cost reaches this |
 | `ADMIN_IDLE_MINUTES` | `30` | The Admin page signs out after this long without activity |
+| `DATABASE_URL` | unset | Project 4. `postgresql://...` (Neon) or `sqlite:///path.db`: persistent request log, personal data redacted before storage. Unset = temporary files, as before |
+| `STAFF_PASSWORD` | unset | Project 4. Staff sign-in (report an answer for review, no per-session cap). Unset = Demo mode only |
+| `STAFF_IDLE_MINUTES` | `30` | Staff sign-in signs out after this long without activity |
+| `RETENTION_DAYS` | `30` | Log records older than this are deleted (daily, and by `scripts/retention.py`) |
+| `BUDGET_P95_S` / `BUDGET_COST_PER_1000` | `4.0` / `0.50` | Budgets on the Operations page (the eval harness gates the same numbers in CI) |
+| `KILL_SWITCH` | `false` | `true` stops every model call; visitors see a short "paused" message |
+| `LLM_TIMEOUT_S` / `LLM_RETRIES` | `30` / `2` | Per-call timeout and SDK retries with exponential backoff |
 
 **Rebrand for a client demo (about 5 minutes):** edit `branding.toml` (product name, hotel group, colors, logo, property names, highlights and sample questions), set the same primary colors in `.streamlit/config.toml` under `[theme.light]` and `[theme.dark]`, and replace `assets/logo.svg`, `assets/logo-icon.svg` and `assets/favicon.png`. The "Demo with simulated hotel documents" label is fixed and can't be removed by branding.
 
@@ -453,7 +478,7 @@ Streamlit Cloud installs only `requirements.txt`, so the live demo runs **keywor
 
 **Before sharing the link, set a monthly spending limit in the [Anthropic Console](https://console.anthropic.com).** Every visitor's question uses your credit; the session and daily caps limit it, but the Console limit is the real backstop.
 
-Notes: Streamlit Cloud apps sleep after 12 hours without traffic, and the usage logs, Insights data and daily counter reset whenever the app restarts, so the deployed Insights page shows recent activity only.
+Notes: Streamlit Cloud apps sleep after 12 hours without traffic. Without `DATABASE_URL`, the usage logs and Insights data reset whenever the app restarts; with it (Neon Postgres, Project 4) they are kept for 30 days with personal data redacted. The daily counter always resets on restart.
 
 ### Always-on: Docker on Render (hybrid search)
 1. On [render.com](https://render.com), create a **Web Service** from this GitHub repo; Render detects the `Dockerfile`.
@@ -473,7 +498,7 @@ Three places to check, from most to least specific:
 
 **The request log.** Every request writes one record (schema in [ARCHITECTURE.md](docs/ARCHITECTURE.md#request-log-record)): request ID, time, an anonymous session ID, property, the question, the outcome and refusal reason, the full answer, citations, follow-ups shown, every retrieved passage with its score and whether it was cited, model, search mode, first-word and total time, tokens, estimated cost, grounding flags and a safe error message. 👍 / 👎 ratings link to the request by its ID. Secret values are masked before anything is written. Records from older versions show missing fields as "not recorded".
 
-Streamlit Cloud keeps logs, the error list and the daily counter only until the app restarts, so the Admin page says "Logs reset when the app restarts" and offers JSONL downloads to keep a copy.
+Without `DATABASE_URL`, Streamlit Cloud keeps logs and the error list only until the app restarts, and the Admin page says so; with it, the Admin page reads from the database and says where records are kept. The owner-only **Operations** page (Project 4) shows requests, errors, p50/p95 latency, cost per day, refusals, escalations, budget status, log storage, the kill switch and staff reports. A daily GitHub Action in [hotel-ai-handoff](https://github.com/vamsialladev/hotel-ai-handoff) checks the live app and tells "asleep" (free hosting) from "down".
 
 <details>
 <summary>Admin request log: the list and a request's details (local run, real answers)</summary>
@@ -486,7 +511,7 @@ Streamlit Cloud keeps logs, the error list and the daily counter only until the 
 ## Testing and quality
 
 ```bash
-python -m pytest -q --cov                 # 307 tests, 97% coverage
+python -m pytest -q --cov                 # 378 tests (+8 Postgres tests in CI), 97% coverage
 python -m eval.run_eval                    # retrieval, scope and escalation eval (free)
 python -m eval.run_eval --answers --runs 3 --price-in 0.10 --price-out 0.50
 ruff check . && ruff format --check .      # lint and format
@@ -494,7 +519,7 @@ pip-audit -r requirements.txt              # known vulnerabilities
 ```
 
 <details>
-<summary>Test run: 307 passed, 97% coverage</summary>
+<summary>Test run (v1.5.0 screenshot): 307 passed, 97% coverage. v1.6.0: 378 passed locally, 97%</summary>
 <br>
 <img src="docs/images/tests.png" alt="pytest output: 307 tests passed with 97% coverage" width="700">
 </details>
@@ -503,17 +528,17 @@ CI runs on the light install (no PyTorch): lint, format check, `pip-audit`, test
 
 ## Security and privacy
 
-Only synthetic policy documents are indexed; no guest or payment data. Each question and its top 5 passages are sent to the API; earlier turns never are. Secrets stay in `.env` or Streamlit secrets. Questions and answers are logged for quality (git-ignored, newest 5,000 entries, and only until the app restarts on Streamlit Cloud), with secret values masked; no names or accounts are collected. Questions are stored as typed, so the app asks visitors not to enter guest details; personal-data redaction comes in Project 4. Output is escaped, the public demo has per-session and daily caps, and the Admin page is password-protected with a lockout. [SECURITY.md](SECURITY.md) has the threat model and the OWASP Top 10 for LLM Applications mapping.
+Only synthetic policy documents are indexed; no guest or payment data. Each question and its top 5 passages are sent to the API; earlier turns never are. Secrets stay in `.env` or Streamlit secrets. Questions and answers are logged for quality, with secret values masked and **personal data redacted before storage** (emails, phone and card-like numbers, names; booking IDs hashed); with `DATABASE_URL` they are kept 30 days in Postgres, otherwise in temporary files until restart. No accounts are collected; staff sign-in is a shared password (a client would use SSO, [decision 54](docs/DECISIONS.md)). Emergencies never reach the model. Output is escaped, the public demo has per-session and daily caps, and the Admin page is password-protected with a lockout. [SECURITY.md](SECURITY.md) has the threat model and the OWASP Top 10 for LLM Applications mapping.
 
 ## Limitations and roadmap
 
-- **Spanish and other languages:** the embedding model is English-only (documented, not fixed).
+- **Languages:** Spanish is supported with a hotel vocabulary list (Project 4); other languages are still refused before the model, and the embedding model is English-only.
 - **OCR** for scanned documents (currently flagged, not read).
 - **Live demo is keyword-only** on the free tier; the jacket and Spanish questions need hybrid.
 - **The eval and visitor questions were written by the same person who wrote the documents**, which flatters the scores; held-out questions from people who haven't seen the documents are on the [validation checklist](docs/VALIDATION_CHECKLIST.md).
 - **Word-list grading** has known false positives; an LLM judge calibrated against human labels is **Project 3**.
-- **Logs live on Streamlit Cloud's temporary disk** and reset whenever the app restarts (the Admin page says so and offers JSONL downloads). **Project 4:** a persistent log store, a retention policy and a log viewer ([decision 50](docs/DECISIONS.md)).
-- **Sign-in with roles, personal-data redaction and monitoring with alerts:** **Project 4**.
+- **Persistent logs need `DATABASE_URL`** (Neon on the live app); name redaction is pattern-based and can miss a bare name with no cue ([decision 55](docs/DECISIONS.md)).
+- **Staff sign-in is a shared password**, not individual accounts; a client deployment would use SSO with OIDC ([decision 54](docs/DECISIONS.md)).
 - **Project 2** uses this assistant as a tool in a guest-email agent.
 
 ## Documentation

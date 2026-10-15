@@ -2,6 +2,34 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] - 2026-10-15
+### Added
+- **Spanish questions** reach the model and get Spanish answers from the English documents (Spanish hotel vocabulary
+  added to the search query, deterministic language detection, Spanish scope message). Refusals keep the exact English
+  sentence.
+- **Persistent request log** (Project 4): `DATABASE_URL` set to Postgres (Neon on the live app) or SQLite stores every
+  request, feedback, error and staff report in one `app_log` table; unset keeps the files exactly as before. A failed
+  write falls back to the file.
+- **Personal-data redaction before storage:** emails, phone and card-like numbers and names masked, booking IDs hashed.
+- **30-day retention** (`RETENTION_DAYS`), applied daily and by `python scripts/retention.py`.
+- **Staff role** next to the open Demo mode (`STAFF_PASSWORD`): report an answer for review, no per-session cap.
+- **Operations page** (owner only): requests, errors, p50/p95, cost per day, refusals, escalations, budget status, log
+  storage, kill switch, staff reports.
+- **Budgets** (`BUDGET_P95_S` 4.0 s, `BUDGET_COST_PER_1000` $0.50), also gated by the eval harness in CI.
+- **Kill switch** (`KILL_SWITCH`), 30 s per-call timeout and SDK retries with backoff.
+- `docker compose up --build`: the app with its own Postgres. CI runs the store tests against Postgres too.
+
+### Changed
+- **Safety rule** catches paraphrased and Spanish emergencies ("smoke coming from under a door", "hay un incendio");
+  0 false alarms on every non-safety eval question and suggestion.
+- **Emergencies never reach the model:** a fixed safety message (English or Spanish) and the manager note.
+- Privacy page and Admin note say where logs are kept (database with redaction and retention, or until restart).
+
+### Measured (eval harness, live, keyword-only, 3 runs, 2026-10-15)
+- Dev answer accuracy 98% → 100% (162/162); strict retrieval 44/45 → 45/45 (q37 Spanish); p95 2.93 s; $0.18 / 1,000.
+- Held-out (13 cases added in Project 3): answer accuracy 67% → 85%, escalation rules 85% → 100%, answer language
+  33% → 100%. Eight new held-out cases written before the fixes: 62% → 100%.
+
 ## [1.5.0] - 2026-10-11
 ### Added
 - **Complete request log** (schema version 2): one record per request, whether answered, refused, off-topic,
