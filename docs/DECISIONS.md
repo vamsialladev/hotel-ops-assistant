@@ -374,3 +374,86 @@ Admin password. The two early mountain-lodge entries that showed only a header l
 in to the live Admin page; reproducing every record type locally showed none crashes, so the likely cause is the
 old view having nothing more to show for them. The new Raw tab shows exactly what any record contains.
 
+## 51. Spanish questions: Spanish vocabulary into the search, answers in the guest's language (Project 4)
+**Context:** The keyword scope check found no English words in "¿Cuánto cuesta el estacionamiento?" (a06) or
+"¿Se permiten gatos en el hotel?" (a07), so Spanish questions were refused before reaching Claude (3/3 runs; same
+cause as q37). Held-out answer accuracy was 67% on the 13 cases added in Project 3.
+**Decision:** Detect the language deterministically (`src/language.py`, scaled for short questions: Spanish
+punctuation, accents and question words count). Add Spanish hotel vocabulary to the query only (`SPANISH` in
+`src/retrieve.py`, beside the English synonyms), built from the documents' section titles, never from test questions;
+keys that are also English words ("auto", "cargo", "resort") were removed and a test keeps them out. The prompt asks
+for an answer in the question's language; the refusal stays the exact English sentence so refusals are still detected.
+The scope message has a Spanish version. Eight new held-out cases (a14–a21) were written and committed in the eval
+harness **before** the fix.
+**Tradeoff:** A glossary covers hotel topics in Spanish only; another language is still refused before the model. A
+translation call would cover every language but adds cost and latency to every non-English question.
+**Result:** Live, 3 runs (2026-10-15, keyword-only): the 13 Project 3 held-out cases 67% → 85%; the 8 new cases 62% →
+100%; answer language 33% → 100% on the old cases and 40% → 100% on the new ones; q37 now retrieved (strict retrieval
+44/45 → 45/45). Dev answer accuracy 98% → 100% (162/162).
+
+## 52. Emergencies in other words and in Spanish (Project 4)
+**Context:** The safety rule only knew "smoke alarm/detector" and English words: no manager note for "smoke coming
+from under a guest room door" (a12) or "Hay un incendio en la cocina" (a13). Escalation rules 33/39 on held-out.
+**Decision:** A second pattern list on accent-free text: paraphrases staff type (smoke coming/under, smell gas, not
+responding, collapsed, bleeding, stuck in the elevator...), Spanish (incendio, humo, sangrando, desmayó...) and a few
+French terms. Smoking-policy words stay out. A test runs every non-safety question in the dev eval, the visitor eval
+and the curated suggestions through it and requires zero false alarms; a second test shows a naive "smoke or fire"
+pattern fails that check.
+**Tradeoff:** Pattern lists miss phrasings nobody wrote down; a model classifier would generalise but costs a call
+and can be wrong silently. The false-alarm test keeps the list honest.
+**Result:** Escalation rules 85% → 100% on the old held-out cases, 62% → 100% on the new ones (a18–a20), dev still
+54/54; 0 false alarms on every non-safety eval question and suggestion.
+
+## 53. Emergencies never wait for the model (Project 4)
+**Context:** With the manager note fixed, held-out a12 still failed: Claude answered "smoke coming from under a door"
+with the smoking policy and the $250 cleaning fee before saying to escalate. The documents have no readable emergency
+procedure (the only one is a scanned image, decision 9).
+**Decision:** When the safety rule fires, the assistant returns a fixed message (English or Spanish: call emergency
+services if anyone may be in danger, follow the posted procedures, contact the Manager on Duty) plus the safety note,
+with no retrieval shown and no API call.
+**Tradeoff:** A safety question the documents could one day answer (an assembly point) gets the fixed message until
+the procedure exists as text; that is the right default for an emergency.
+**Result:** Correct refusals on held-out 83% → 100%; dev correct refusals stay 27/27 (in the first Project 4 run,
+before this change, q51 "the smoke alarm is going off" had been answered once: 26/27).
+
+## 54. Demo mode and a Staff role; SSO is the client path (Project 4)
+**Context:** The public demo is open to anyone. A real deployment needs actions only staff can take.
+**Decision:** Demo mode stays open and unchanged. `STAFF_PASSWORD` (optional) adds a staff sign-in in the sidebar
+with the Admin gate's protections (constant-time compare, 5 tries then 15-minute lockout, 30-minute idle sign-out).
+Staff can report an answer for review (a queue on the Operations page) and have no per-session cap. Roles live in
+`src/roles.py`.
+**Tradeoff:** A shared password is demo-grade: no individual accounts, no audit of who did what. A client deployment
+should use the client's identity provider with OpenID Connect (Streamlit's `st.login`), map an IdP group to Staff and
+another to Owner, and delete the shared passwords. Only the check in `roles.py` and the sign-in widget change.
+**Result:** Tested: sign-in, wrong passwords, lockout, idle sign-out, no sign-in offered when unset.
+
+## 55. Persistent request log with personal data redacted before storage (Project 4)
+**Context:** Logs lived on Streamlit Cloud's temporary disk and reset on every restart (decision 50).
+**Decision:** `DATABASE_URL` (optional): `postgresql://` (Neon on the live app, a container in docker compose) or
+`sqlite:///`. One table `app_log(app, stream, ts, data)` for requests, feedback, errors and staff reports, shared with
+Project 2 by app name. Unset: files exactly as before. A failed write falls back to the file; reads merge both. Before
+any write, `src/pii.py` masks emails, phone numbers, card-like numbers and names (sign-offs, greetings, "my name is",
+known sender names) and hashes booking IDs. Records older than `RETENTION_DAYS` (30) are deleted once a day per
+process and by `scripts/retention.py`. The database URL is masked like a password if it ever appears in a log.
+**Tradeoff:** Pattern-based name redaction misses a bare name with no cue; listed under known limitations. A JSON text
+column instead of typed columns keeps one schema for two apps but makes SQL reporting harder.
+**Result:** Tests plant personal data in every field of a real record and fail if any reaches storage (files, SQLite,
+and Postgres in CI); turning redaction off is shown to fail the same test. Tests never use a live `DATABASE_URL`.
+
+## 56. Kill switch, timeouts and retries (Project 4)
+**Context:** If the API misbehaves or costs run away, the owner needed a way to stop model calls without a deploy.
+**Decision:** `KILL_SWITCH=true` stops every model call (visitors see a short "paused" message, logged as `paused`).
+Every call has a 30-second timeout and the SDK's retries with exponential backoff (2 retries). Errors are classified
+(`timeout`, `server_error`, `rate_limit`...) for the owner; visitors only ever see a friendly message.
+**Tradeoff:** A stream that stalls mid-answer cannot be retried; the visitor gets the outage message.
+**Result:** The new timeout fired during the Project 4 live eval (q19's stream stalled for 30 s); the eval driver now
+records a failed call as a failed answer instead of stopping the run.
+
+## 57. Latency and cost budgets, checked in CI (Project 4)
+**Context:** p95 latency and cost were measured but nothing failed when they grew.
+**Decision:** Budgets: full-answer p95 ≤ 4.0 s and ≤ $0.50 per 1,000 questions (`BUDGET_P95_S`,
+`BUDGET_COST_PER_1000`), shown on the owner's Operations page and checked by the eval harness gate on the saved live
+run in CI. Measured 2026-10-15: p95 2.93 s, $0.18 per 1,000.
+**Tradeoff:** About 35% headroom on latency so normal variation never fails CI; a real regression (a bigger model, a
+much longer prompt) does.
+**Result:** Tests show both budgets failing when exceeded and "skipped" (not passed) when a run has no timing.
