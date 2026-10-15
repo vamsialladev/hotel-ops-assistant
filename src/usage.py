@@ -14,11 +14,19 @@ import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
+from src import pii, store
 from src.config import LOG_DIR, LOG_MAX_ENTRIES
 from src.fileio import with_retries
 from src.secrets_check import secret_values
 
 USAGE_FILE = LOG_DIR / "usage.jsonl"
+# Log file name -> database stream (Project 4). Files not listed here are never stored in the database.
+STREAMS = {
+    "usage.jsonl": "requests",
+    "feedback.jsonl": "feedback",
+    "errors.jsonl": "errors",
+    "reports.jsonl": "reports",
+}
 logger = logging.getLogger("hotel_ops.usage")
 _LOCK = threading.Lock()
 
@@ -58,7 +66,10 @@ def append_jsonl(path: Path, record: dict, max_entries: int = LOG_MAX_ENTRIES) -
     Never raises: a log that can't be written (even after retries) is reported on stdout and skipped,
     because logging must not break the page that's being logged. Returns whether the write succeeded."""
     path = Path(path)
-    record = redact(record)
+    record = pii.redact_record(redact(record))  # secrets, then personal data, before any storage
+    stream = STREAMS.get(path.name)
+    if stream and store.enabled() and store.save(stream, record):
+        return True  # the database is the log; the file is only the fallback when it can't be written
 
     def write():
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -78,7 +89,19 @@ def append_jsonl(path: Path, record: dict, max_entries: int = LOG_MAX_ENTRIES) -
 
 
 def read_jsonl(path: Path) -> list[dict]:
+    """A log's records, oldest first: from the database when one is configured (plus any records that fell back
+    to the file), otherwise from the file as before."""
     path = Path(path)
+    stream = STREAMS.get(path.name)
+    if stream and store.enabled():
+        rows = store.load(stream, LOG_MAX_ENTRIES)
+        if rows is not None:
+            extra = _read_file(path)
+            return sorted(rows + extra, key=lambda r: str(r.get("time", ""))) if extra else rows
+    return _read_file(path)
+
+
+def _read_file(path: Path) -> list[dict]:
     if not path.exists():
         return []
     try:
