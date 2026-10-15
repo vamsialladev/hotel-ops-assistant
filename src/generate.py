@@ -10,7 +10,7 @@ import time
 
 import anthropic
 
-from src.config import LLM_EFFORT, LLM_MAX_TOKENS, LLM_MODEL
+from src.config import LLM_EFFORT, LLM_MAX_TOKENS, LLM_MODEL, LLM_RETRIES, LLM_TIMEOUT_S, model_calls_enabled
 from src.language import LANGUAGE_NAMES, detect_language
 
 NOT_FOUND = "I couldn't find this in the hotel's documents. Please check with a manager."
@@ -75,6 +75,17 @@ def build_request(question: str, prop: str, chunks: list) -> dict:
     return request
 
 
+class ModelCallsPaused(RuntimeError):
+    """The owner turned model calls off (KILL_SWITCH). Handled like an API outage: a clear message, no call."""
+
+
+def make_client() -> anthropic.Anthropic:
+    """Timeout per call plus the SDK's retries with exponential backoff (timeouts, 429, 5xx)."""
+    if not model_calls_enabled():
+        raise ModelCallsPaused("model calls are paused by the kill switch")
+    return anthropic.Anthropic(timeout=LLM_TIMEOUT_S, max_retries=LLM_RETRIES)
+
+
 def is_refusal(text: str, cited: list) -> bool:
     """A refusal is the fixed sentence with no cited answer around it. A substantive, cited answer that also
     contains the sentence is a (partial) answer, not a refusal (found via eval, docs/DECISIONS.md #27)."""
@@ -106,7 +117,7 @@ def message_text(message) -> str:
 def answer(question: str, prop: str, chunks: list, client=None) -> dict:
     if not chunks:  # nothing relevant found: refuse without spending an API call
         return refusal_result()
-    client = client or anthropic.Anthropic()
+    client = client or make_client()
     message = client.messages.create(**build_request(question, prop, chunks))
     if getattr(message, "stop_reason", None) == "refusal":
         return {**refusal_result(), "usage": build_result("", chunks, message.usage)["usage"]}
@@ -131,7 +142,7 @@ class AnswerStream:
             self.time_to_first_token = self.total_time = 0.0
             yield NOT_FOUND
             return
-        client = self.client or anthropic.Anthropic()
+        client = self.client or make_client()
         with client.messages.stream(**build_request(self.question, self.prop, self.chunks)) as stream:
             for text in stream.text_stream:
                 if self.time_to_first_token is None:

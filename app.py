@@ -42,9 +42,20 @@ if admin_password():
             visibility="visible" if unlocked else "hidden",
         )
     )
+    pages.append(  # Project 4: owner-only, behind the same sign-in as Admin
+        st.Page(
+            "views/operations.py",
+            title="Operations",
+            icon=":material/monitoring:",
+            url_path="operations",
+            visibility="visible" if unlocked else "hidden",
+        )
+    )
 
 page = st.navigation(pages)
 ui.app_started()  # remembered once per server start, for the Admin page's uptime
 ui.startup_checks()  # logs any missing required secret by name, once per server start
 with ui.error_boundary(page.title):  # no page ever shows Streamlit's crash screen or a traceback
     page.run()
+with ui.error_boundary("Staff panel"):
+    ui.staff_panel(ui.recent_answers)  # after the page, so the page's own sidebar comes first

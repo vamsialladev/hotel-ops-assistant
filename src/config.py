@@ -52,6 +52,34 @@ ALERT_DAILY_COST_USD = float(os.getenv("ALERT_DAILY_COST_USD", "1.00"))  # estim
 ADMIN_IDLE_MINUTES = int(os.getenv("ADMIN_IDLE_MINUTES", "30"))  # Admin page locks itself after this
 
 
+# ---------- Project 4: production settings. All optional: unset = the app runs exactly as before. ----------
+APP_NAME = "hotel-ops-assistant"
+RETENTION_DAYS = int(os.getenv("RETENTION_DAYS", "30"))  # log records older than this are deleted
+STAFF_IDLE_MINUTES = int(os.getenv("STAFF_IDLE_MINUTES", "30"))  # staff sign-in locks itself after this
+# Budgets, checked by the harness in CI and shown on the Operations page.
+BUDGET_P95_S = float(os.getenv("BUDGET_P95_S", "4.0"))  # full-response p95 latency, seconds
+BUDGET_COST_PER_1000 = float(os.getenv("BUDGET_COST_PER_1000", "0.50"))  # USD per 1,000 requests
+# Resilience: each model call times out after LLM_TIMEOUT_S; the Anthropic SDK retries timeouts, 429 and 5xx
+# LLM_RETRIES times with exponential backoff and jitter (0.5 s, 1 s, 2 s ... capped at 8 s).
+LLM_TIMEOUT_S = float(os.getenv("LLM_TIMEOUT_S", "30"))
+LLM_RETRIES = int(os.getenv("LLM_RETRIES", "2"))
+
+
+def database_url() -> str | None:
+    """Read at call time (a secret added on Streamlit Cloud is picked up). Never log or display the value."""
+    return os.getenv("DATABASE_URL", "").strip() or None
+
+
+def staff_password() -> str | None:
+    """Unlocks staff actions. Unset = the app stays in Demo mode only. Never log the value."""
+    return os.getenv("STAFF_PASSWORD") or None
+
+
+def model_calls_enabled() -> bool:
+    """Kill switch: KILL_SWITCH=true stops every model call at once (answers come from the safe fallback)."""
+    return os.getenv("KILL_SWITCH", "").strip().lower() not in {"1", "true", "yes", "on"}
+
+
 def admin_password() -> str | None:
     """Read at call time so a secret added on Streamlit Cloud is picked up. Never log the value."""
     return os.getenv("ADMIN_PASSWORD") or None

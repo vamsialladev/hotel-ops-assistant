@@ -8,7 +8,7 @@ from src import assist, intents, service
 from src.chat import FEEDBACK_REASONS, Turn, remaining, validate_question
 from src.config import MAX_QUESTION_CHARS, MAX_QUESTIONS_PER_SESSION
 from src.display import esc, quote_markdown, safe_markdown, scope_label, source_chip_html, source_label
-from src.errors import UNAVAILABLE, category, classify, private_detail, record_error, safe_message
+from src.errors import UNAVAILABLE, category, classify, friendly, private_detail, record_error, safe_message
 from src.escalation import RULES_BY_ID
 from src.feedback import log_feedback
 from src.generate import NOT_FOUND, AnswerStream
@@ -310,7 +310,7 @@ def handle(raw: str, prop: str, source: str = "typed"):
         finish(turn, "greeting", counted=False, pre_api=True)
         render_turn(turn)
         return
-    if chat.asked >= MAX_QUESTIONS_PER_SESSION:
+    if chat.asked >= MAX_QUESTIONS_PER_SESSION and not ui.is_staff():  # staff: no per-session cap
         st.info(SESSION_LIMIT, icon=":material/hourglass_bottom:")
         log_turn(turn, "answer", pre_api=True, error="session_cap", error_message=SESSION_LIMIT)
         return
@@ -320,7 +320,7 @@ def handle(raw: str, prop: str, source: str = "typed"):
         prep = service.prepare(retriever, question, prop)
         if prep["blocked"]:  # off-topic or gibberish: answered without an API call
             turn.result = service.finalize(question, prop, service.blocked_result(question))
-            finish(turn, "scope", pre_api=True)
+            finish(turn, "refusal" if prep.get("safety") else "scope", pre_api=True)
         elif not ui.daily_counter().try_consume():
             turn.error = DAILY_LIMIT
             log_turn(turn, "answer", pre_api=True, error="daily_cap", error_message=DAILY_LIMIT)
@@ -338,7 +338,7 @@ def handle(raw: str, prop: str, source: str = "typed"):
                 code = classify(exc)
                 log.error("answer failed: %s (%s) %s", code, category(code), private_detail(exc))
                 record_error("Assistant", exc)
-                turn.error = UNAVAILABLE
+                turn.error = friendly(code)
                 log_turn(turn, "answer", hits=prep["hits"], error=code, error_message=safe_message(exc))
                 chat.add(turn)
                 render_answer(turn)

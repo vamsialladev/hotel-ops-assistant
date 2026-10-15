@@ -9,10 +9,16 @@ import re
 import anthropic
 
 UNAVAILABLE = "The demo is temporarily unavailable. Please try again later."
+PAUSED = (
+    "Answers are paused for a moment while the team checks the assistant. Please use the hotel's documents or "
+    "ask a manager in the meantime."
+)
 
 
 def classify(exc: Exception) -> str:
     """Short error code for the private log and the Admin page."""
+    if type(exc).__name__ == "ModelCallsPaused":
+        return "paused"
     if isinstance(exc, anthropic.AuthenticationError):
         return "auth"
     if isinstance(exc, anthropic.PermissionDeniedError):
@@ -28,6 +34,8 @@ def classify(exc: Exception) -> str:
         if exc.status_code >= 500:
             return "server_error"
         return f"api_{exc.status_code}"
+    if isinstance(exc, anthropic.APITimeoutError):
+        return "timeout"
     if isinstance(exc, anthropic.APIConnectionError):
         return "connection"
     message = str(exc).lower()
@@ -46,7 +54,14 @@ CATEGORIES = {
     "rate_limit": "rate limit: too many requests, retry later",
     "connection": "network: couldn't reach the Anthropic API",
     "server_error": "Anthropic API error: usually temporary",
+    "paused": "kill switch: KILL_SWITCH is on, model calls are paused by the owner",
+    "timeout": "timeout: the model call took longer than LLM_TIMEOUT_S after retries",
 }
+
+
+def friendly(code: str) -> str:
+    """What a visitor sees: never the error itself."""
+    return PAUSED if code == "paused" else UNAVAILABLE
 
 
 def category(code: str) -> str:

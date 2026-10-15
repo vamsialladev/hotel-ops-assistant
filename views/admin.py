@@ -174,10 +174,7 @@ st.caption(
 s = admin_stats(usage, feedback, today=today)
 st.subheader("Usage")
 since = log_since(usage)
-st.caption(
-    f"Log since {since + ' UTC' if since else 'no entries yet'} · Logs reset when the app restarts. "
-    "Download a copy to keep it."
-)
+st.caption(f"Log since {since + ' UTC' if since else 'no entries yet'} · {ui.log_storage_note()}")
 k1, k2 = st.columns(2)
 k1.download_button(
     "Download usage log (JSONL)",
