@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+from src.config import LOG_MAX_ENTRIES
 from views import components as ui
 
 ui.header("Disclaimer and privacy", "", "About this demo")
@@ -18,9 +19,8 @@ room numbers tied to people, emails, phone numbers or payment details. On the pu
 phone numbers in unanswered questions are masked.
 
 **How data is handled.**
-- Questions and answers are logged for quality, with timing, token counts and the passages used. The logs are
-  stored on the app server, readable only by the app owner, and kept only until the app restarts (at most the
-  most recent 5,000 entries).
+- Questions and answers are logged for quality, with timing, token counts and the passages used.
+  {storage}
 - No names or accounts are collected. Each browser session gets an anonymous random ID so a conversation's
   questions can be grouped; it isn't tied to a person.
 - Questions and the matching document passages are sent to Anthropic's API to generate answers.
@@ -28,6 +28,6 @@ phone numbers in unanswered questions are masked.
 
 **Usage limits.** To keep the demo available, each session can ask a limited number of questions, and there is a
 daily limit across all visitors.
-"""
+""".replace("{storage}", ui.privacy_storage_line("The logs", LOG_MAX_ENTRIES))
 )
 ui.footer()

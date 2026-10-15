@@ -130,7 +130,7 @@ def test_operations_page_shows_numbers_budgets_and_storage(app):
     app.run()
     app.session_state["admin_gate"] = GateState(unlocked=True, last_active=time.time())
     app.switch_page("views/operations.py").run()
-    assert not app.exception
+    assert not app.exception and not app.error
     text = " ".join(str(x.value) for x in [*app.markdown, *app.caption])
     assert "Within budget: 1.20 s (budget 4.00 s)" in text
     assert "Not configured: temporary files" in str([d.value for d in app.dataframe])
