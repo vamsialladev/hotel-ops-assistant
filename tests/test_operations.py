@@ -97,7 +97,7 @@ def test_client_has_a_timeout_and_retries(monkeypatch):
 
 
 def test_timeouts_and_outages_get_the_generic_message():
-    request = __import__("httpx").Request("POST", "https://api.anthropic.com/v1/messages")
+    request = __import__("httpx2").Request("POST", "https://api.anthropic.com/v1/messages")
     assert classify(anthropic.APITimeoutError(request=request)) == "timeout"
     assert friendly("timeout") == UNAVAILABLE and friendly("server_error") == UNAVAILABLE
 
