@@ -478,6 +478,8 @@ Streamlit Cloud installs only `requirements.txt`, so the live demo runs **keywor
 
 **Before sharing the link, set a monthly spending limit in the [Anthropic Console](https://console.anthropic.com).** Every visitor's question uses your credit; the session and daily caps limit it, but the Console limit is the real backstop.
 
+**Live since 2026-10-16:** both live apps log to Neon Postgres. Checked that day: a visitor request with a planted name, email and phone was stored with all three replaced by `[name]`, `[email]`, `[phone]`, and the Operations page reads it.
+
 Notes: Streamlit Cloud apps sleep after 12 hours without traffic. Without `DATABASE_URL`, the usage logs and Insights data reset whenever the app restarts; with it (Neon Postgres, Project 4) they are kept for 30 days with personal data redacted. The daily counter always resets on restart.
 
 ### Always-on: Docker on Render (hybrid search)
