@@ -7,4 +7,3 @@ reportlab~=5.0
 pillow~=12.3
 pip-audit~=2.10
 playwright~=1.63  # scripts/capture_screenshots.py and record_demo.py only
-piper-tts~=1.8  # scripts/record_demo.py narration only (offline text-to-speech)
