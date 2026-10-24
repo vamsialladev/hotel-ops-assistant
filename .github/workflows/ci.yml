@@ -45,6 +45,8 @@ jobs:
         run: python -m eval.run_visitor_eval --bm25-only --min-success 1.0 --no-report
       - name: Every curated suggestion retrieves a passage of its topic (free)
         run: python -m eval.run_suggestions_eval --bm25-only
+      - name: "Multi-turn gate: follow-ups find the right property and passage with the rule rewrite (free, measured 17/18)"
+        run: python -m eval.run_multiturn_eval --modes rule --no-answers --split all --no-report --min-retrieval 0.94
 
   harness-gates:
     name: "Eval harness gates (hoteleval v1.0.0, recorded mode, no API)"
