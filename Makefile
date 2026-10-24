@@ -33,7 +33,7 @@ eval-answers:   ## full eval incl. answers, 3 runs, with cost (uses the API)
 eval-visitors:  ## visitor first-question eval: routing and retrieval (free)
 	python -m eval.run_visitor_eval --bm25-only
 
-video:          ## record the narrated demo video from the live app (6 real questions)
+video:          ## record the captioned demo video (no voice) from the live app (6 real questions)
 	python scripts/record_demo.py
 
 screenshots:    ## README screenshots and GIF (app must be running)

@@ -7,18 +7,18 @@
 ![Coverage 97%](https://img.shields.io/badge/coverage-97%25-brightgreen)
 [![Live demo](https://img.shields.io/badge/live%20demo-streamlit-FF4B4B)](https://hotel-ops-assistant.streamlit.app)
 
-## See it in action
+**An AI assistant that gives hotel front-desk staff correct, property-specific policy answers in seconds, with the source for every fact.**
+
+> **Stage 1 of a simulated client engagement** for a fictional hotel group with two properties, a beach resort and a mountain lodge. All documents are synthetic and written to mirror real hotel operations. Business value is a projection from stated assumptions, not a measured result. Discovery and scoping (stage 0): [hotel-ai-discovery](https://github.com/vamsialladev/hotel-ai-discovery).
+
+<!-- DEMO-VIDEO -->
 
 <p align="center"><img src="docs/images/demo.gif" alt="On the live app, a front-desk agent at Beach Resort clicks 'Can a guest bring their dog?' and a cited answer streams in with its source chip and related questions" width="760"></p>
 <p align="center"><em>The live app: one click on a suggested question, a cited answer from the hotel's own policy in about two seconds.</em></p>
-<p align="center"><strong><a href="https://vamsialla.com/projects/hotel-ops-assistant.html#demo">▶ Watch the full 2-minute demo (with narration)</a></strong> · <strong><a href="https://hotel-ops-assistant.streamlit.app">Try the live app</a></strong> (no sign-in)</p>
 
-**An AI assistant that gives hotel front-desk staff correct, property-specific policy answers in seconds, with the source for every fact.**
+**▶ Try it live: [hotel-ops-assistant.streamlit.app](https://hotel-ops-assistant.streamlit.app)** (open to everyone, no sign-in). Free hosting: may take ~30 s to wake.
 
-> **Project 1 of 5** in my portfolio. This is a *simulated client engagement*: a fictional hotel group with two properties, a beach resort and a mountain lodge. All documents are synthetic and written to mirror real hotel operations. Business value is a projection from stated assumptions, not a measured result.
-
-🔗 **[Live demo](https://hotel-ops-assistant.streamlit.app)** (open to everyone, no sign-in) · 📄 **[Case study](https://vamsialla.com/projects/hotel-ops-assistant.html)** · 💰 **[Business case](docs/BUSINESS_CASE.md)** · 🏗️ **[Architecture](docs/ARCHITECTURE.md)** · 🎥 **[2-minute demo video](https://vamsialla.com/videos/hotel-ops-demo.mp4)** (narrated, captioned)
-<sub>Free hosting: if the app is asleep, click ‘wake up’ and give it about 30 seconds.</sub>
+📄 **[Case study](https://vamsialla.com/projects/hotel-ops-assistant.html)** · 💰 **[Business case](docs/BUSINESS_CASE.md)** · 🏗️ **[Architecture](docs/ARCHITECTURE.md)** · 🧭 **[Decisions](docs/DECISIONS.md)**
 
 ---
 
@@ -28,8 +28,9 @@
 |---|---|
 | **Problem** | Staff search scattered PDFs, menus and notes while a guest waits, and the rules differ by hotel. Wrong answers turn into refunds and complaints. |
 | **Solution** | Pick your property, ask in plain English, and get a 1–4 sentence answer that cites every fact. It refuses when the documents don't say, corrects wrong facts in the question, and points to a manager for refunds and safety. |
+| **Quality (measured)** | 54-question eval, 3 runs, live demo's keyword-only search: **100% answer accuracy** in v1.6.0 (98% in v1.5.0; hybrid 97% in v1.5.0); 100% of escalation rules correct; full answer p95 **2.9s**. Held-out questions added later: 67% → 85% after the stage 4 (production) fixes (Spanish, emergencies). **First-question success 100%** on 49 questions a visitor types first (43% before the coverage work). 378 tests, 97% coverage. |
+| **Cost (measured)** | **$0.18 per 1,000 questions** (v1.6.0 release run, Claude Haiku 5.5, 3 runs) |
 | **Projected value** | ~$32K/yr net for 2 properties (range $8.5K–$66K); ~$1.6M/yr at 100-property scale ([assumptions](docs/BUSINESS_CASE.md)) |
-| **Quality (measured)** | 54-question eval, 3 runs, live demo's keyword-only search: **100% answer accuracy** in v1.6.0 (98% in v1.5.0; hybrid 97% in v1.5.0); 100% of escalation rules correct; full answer p95 **2.9s**; **$0.18 per 1,000 questions**. Held-out questions added later: 67% → 85% after the Project 4 fixes (Spanish, emergencies). **First-question success 100%** on 49 questions a visitor types first (43% before the coverage work). 378 tests, 97% coverage. |
 
 ## Where to start
 
@@ -108,6 +109,8 @@ The AI cost per question is **measured** ($0.00016–0.00019); every other input
 <br>
 <img src="docs/images/business-case.png" alt="Business case calculator showing pessimistic, base and optimistic scenarios for 100 properties" width="760">
 </details>
+
+**Who benefits:** front-desk staff (less searching while a guest waits), managers (fewer wrong-answer refunds and fewer radio calls), new hires (productive sooner). **How a pilot would measure it:** time per lookup by shadowing before and after, requests per shift from the request log, and refunds tagged "wrong information" against the 3 months before.
 
 These are **projections from stated assumptions**, not measured results. [BUSINESS_CASE.md](docs/BUSINESS_CASE.md) has the full model, the policy gaps to raise with the client (including credits between $51 and $200 that no rule covers), a 2-week pilot plan, **success metrics with go / no-go criteria**, and risks. Run `python scripts/business_case.py --scenarios` to change the assumptions.
 
@@ -270,6 +273,18 @@ All 76 curated suggestions retrieve their topic and get a real answer. CI gates 
 
 Every finding is in [DECISIONS.md](docs/DECISIONS.md) with its context, decision, tradeoff and result.
 
+## Design at scale
+
+What exists today is marked **Built**; anything else is **Roadmap**.
+
+| Topic | Design |
+|---|---|
+| **Model choice and why** | **Built:** Claude Haiku 5.5. On the 54-question eval (hybrid, 3 runs) it scored 97% (96–98%) at $0.19 per 1,000 vs. Haiku 4.5 at 98% (96–98%) for $0.99 per 1,000: within run-to-run range for about a fifth of the cost ([decision log](docs/DECISIONS.md)). Answers are short and grounded in retrieved passages, so a larger model isn't needed. Any model change is re-run through the eval and the harness gates first. |
+| **PII and tenant isolation** | **Built:** the model gets only the question and the retrieved passages. Every passage carries its property and retrieval filters on it, so Beach Resort rules never answer a Mountain Lodge question. The request log is redacted before any write (`src/pii.py`: names, emails, phones, cards; booking IDs hashed) and kept 30 days. One deployment serves one hotel group. **Roadmap:** several hotel groups in one deployment need a `hotel_group_id` on every passage and log record, enforced in the query layer (the stage 7 tool server already does this for its tools). |
+| **10K → 1M users** | **What breaks first:** free hosting sleeps, and each app instance loads the whole index into memory and enforces caps per session. **Built:** an always-on Docker image, the index fingerprint so a restart never serves a stale index, the persistent Postgres log, per-session and daily caps. **Roadmap:** build the index once in CI and load it read-only from object storage; run several stateless app containers behind a load balancer; move caps to per-property daily budgets in the database; add prompt caching and a request queue with back-off for model rate limits at check-in peaks. |
+| **Monitoring, alerting, hallucination and off-brand detection** | **Built:** every answer is checked before display (cited passage exists, numbers appear in the passages, manager rules quoted from the documents); the Admin and Operations pages show errors, cost, first-question success and threshold warnings; a daily health check opens a GitHub issue when the app is down ([hotel-ai-handoff](https://github.com/vamsialladev/hotel-ai-handoff)); eval gates with latency and cost budgets run in CI. **Roadmap:** off-brand tone detection with an LLM judge, only once it agrees with human labels (the stage 3 judge reached kappa 0.29, so nothing is gated on it). |
+| **Failure modes and rollback** | **Built:** 30 s timeout + SDK retries and a safe error message; emergencies skip the model and get a fixed safety message; `KILL_SWITCH` turns the AI off without a deploy; caps stop a cost spike. Rollback: revert the commit on `main` (Streamlit Cloud redeploys) or run the previous release tag's Docker image. |
+
 ## Skills demonstrated
 
 | Forward Deployed Engineer skill | Where it shows |
@@ -421,7 +436,7 @@ The command-line tools (`ask.py`, the eval) read only the environment and `.env`
 | Dependency audit | `pip-audit -r requirements.txt` | `make audit` |
 | Business case scenarios | `python scripts/business_case.py --scenarios` | |
 | README screenshots and GIF (app running) | `python scripts/capture_screenshots.py` | |
-| Re-record the demo with narration (live app, 6 real questions; needs ffmpeg and piper-tts) | `python scripts/record_demo.py` → `docs/video/demo.mp4`, `demo.vtt`, `narration-script.txt` + `docs/images/demo.gif` (`--no-voice` for captions only, `--rebuild` reuses the last recording, `--web-out PATH` adds a web copy, poster and captions file) | `make video` |
+| Re-record the captioned demo (live app, 6 real questions; no voice; needs ffmpeg) | `python scripts/record_demo.py` → `docs/video/demo.mp4`, `demo.vtt` + `docs/images/demo.gif` (`--rebuild` reuses the last recording, `--web-out PATH` adds a web copy, poster and captions file). I record my own voice over it. | `make video` |
 | Design-review screenshots, light/dark/phone | `python scripts/capture_review.py --phone` | |
 | Render command output as a terminal image | `python scripts/render_terminal.py out.txt image.png --command "..." --title "..."` | |
 | Regenerate demo PDFs | `python scripts/make_demo_pdfs.py` | `make pdfs` |
@@ -551,7 +566,7 @@ Only synthetic policy documents are indexed; no guest or payment data. Each ques
 | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md) | Value model, assumptions, policy gaps, pilot plan, KPIs, risks |
 | [DECISIONS.md](docs/DECISIONS.md) | 50 decisions with context, decision, tradeoff and result |
 | [ENGINEERING_LOG.md](docs/ENGINEERING_LOG.md) | What broke and how it was fixed, in my own words |
-| [DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Word-for-word 2-minute walkthrough (the narrated video follows it) |
+| [DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Step-by-step walkthrough the captioned screen recording follows |
 | [VALIDATION_CHECKLIST.md](docs/VALIDATION_CHECKLIST.md) | Steps that need a person: measured baseline, held-out questions |
 | [SECURITY.md](SECURITY.md) | Data handling, threat model, OWASP LLM Top 10 mapping |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow, commit style, how to add documents, properties and eval questions |
