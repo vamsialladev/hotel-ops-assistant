@@ -1,9 +1,9 @@
 # 2-Minute Demo Script
 
 The published demo video follows this script exactly: `python scripts/record_demo.py` drives the **live app** with
-real questions, adds burned-in captions, a narration (AI voice, Piper, open source) and a WebVTT captions track.
-It runs about 1:41. To record your own voice, play `docs/video/demo.mp4` muted and read the lines below at the
-times shown (they are also in `docs/video/narration-script.txt`). **Bold** lines are what happens on screen.
+real questions and adds burned-in captions and a WebVTT captions track. It has no voice (decision 58). The video
+I record in my own voice follows `docs/VIDEO_SCRIPT.md`; the lines below match this screen recording.
+**Bold** lines are what happens on screen.
 
 Published video: https://vamsialla.com/videos/hotel-ops-demo.mp4 (embedded on the
 [case study](https://vamsialla.com/projects/hotel-ops-assistant.html#demo)).
@@ -71,7 +71,7 @@ Published video: https://vamsialla.com/videos/hotel-ops-demo.mp4 (embedded on th
 "It's measured on fifty-four test questions: ninety-eight percent answer accuracy on this live demo, at about seventeen cents per thousand questions."
 
 ## 1:35 · End card (6 s)
-**On screen: portfolio, live app and GitHub links; "Narration: AI voice (Piper, open source)".**
+**On screen: portfolio, live app and GitHub links.**
 
 "Try the live app, or read the code and the decisions. The links are on screen."
 
