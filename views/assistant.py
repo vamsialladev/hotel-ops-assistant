@@ -4,12 +4,12 @@ import logging
 
 import streamlit as st
 
-from src import assist, intents, service
+from src import assist, intents, rewrite, service, share
 from src.chat import FEEDBACK_REASONS, Turn, remaining, validate_question
 from src.config import MAX_QUESTION_CHARS, MAX_QUESTIONS_PER_SESSION
 from src.display import esc, quote_markdown, safe_markdown, scope_label, source_chip_html, source_label
 from src.errors import UNAVAILABLE, category, classify, friendly, private_detail, record_error, safe_message
-from src.escalation import RULES_BY_ID
+from src.escalation import RULES_BY_ID, is_safety
 from src.feedback import log_feedback
 from src.generate import NOT_FOUND, AnswerStream
 from src.library import readable_name
@@ -51,6 +51,12 @@ HOW_TO = (
 )
 
 NEW_CHAT_TOAST = "Started a new conversation"
+REOPENED_TOAST = "Reopened a past conversation"
+SHARE_HELP = "A read-only copy of this conversation, inside the link itself. Nothing is stored on a server."
+SHARED_NOTE = (
+    "**Shared conversation (read-only).** Someone shared these answers with you. They were written by AI from this "
+    "demo's synthetic hotel documents when the link was made; nothing here is asked again."
+)
 NEW_CHAT_EMPTY_HELP = "This conversation is already empty"
 guard = ui.safe_callback("Assistant")
 TURN_WIDGETS = ("reason_", "send_", "skip_", "up_", "down_", "topics_")
@@ -63,20 +69,44 @@ def ask_later(question: str, source: str = "typed"):
     st.session_state.pending = {"question": question, "source": source}
 
 
-@guard
-def new_conversation(prop: str):
-    """Clear only this property's chat, drop the cleared turns' widgets, scroll to the top, confirm with a toast,
-    and put the cursor back in the chat input. The question limits are not reset."""
-    if not chat.has_messages(prop):
-        return
-    for turn_id in chat.clear(prop):
+def drop_widgets(turn_ids: list):
+    for turn_id in turn_ids:
         for prefix in TURN_WIDGETS:
             st.session_state.pop(f"{prefix}{turn_id}", None)
+    st.session_state.pop("share_link", None)
+
+
+@guard
+def new_conversation(prop: str):
+    """Save the current conversation to the list, start an empty one, drop the old turns' widgets, scroll to the
+    top, confirm with a toast, and put the cursor back in the chat input. The question limits are not reset."""
+    if not chat.has_messages(prop):
+        return
+    drop_widgets(chat.clear(prop))
     st.session_state.pop("pending", None)
     st.session_state.pop(f"topics_welcome_{prop}", None)
     st.session_state.scroll_top = True
     st.session_state.toast = NEW_CHAT_TOAST
     st.session_state.focus = "new_chat"
+
+
+@guard
+def reopen_conversation(conversation_id: str):
+    """Show a past conversation again (the current one is saved first) and continue it."""
+    drop_widgets(chat.reopen(conversation_id))
+    props = chat.current.properties()
+    if props:
+        st.session_state.switch_property = props[-1]  # applied before the property picker is drawn
+    st.session_state.pop("pending", None)
+    st.session_state.scroll_top = True
+    st.session_state.toast = REOPENED_TOAST
+
+
+@guard
+def make_share_link():
+    """Build the read-only link for the current conversation (personal data replaced first)."""
+    token, found = share.make_token(chat.current.turns)
+    st.session_state.share_link = {"token": token, "found": found}
 
 
 @guard
@@ -220,6 +250,8 @@ def render_answer(turn: Turn, text_shown: bool = False):
         render_feedback(turn)
         return
     rules = [RULES_BY_ID[r] for r in result.get("escalations", []) if r in RULES_BY_ID]
+    if turn.rewritten:
+        st.html(f'<p class="hoa-understood">Understood as: {esc(turn.rewritten)}</p>')
     if turn.kind == "refusal" and result["answer"].strip() == NOT_FOUND:
         st.markdown(f"{REFUSAL_HEAD} If it's a real guest question, please check with a manager.")
     elif not text_shown:
@@ -244,8 +276,14 @@ def render_answer(turn: Turn, text_shown: bool = False):
     render_feedback(turn)
 
 
-def render_turn(turn: Turn):
+def property_tag(prop: str) -> str:
+    return f'<span class="hoa-turn-prop">{esc(b.property_name(prop))}</span>'
+
+
+def render_turn(turn: Turn, show_property: bool = False):
     with st.chat_message("user", avatar=USER_AVATAR):
+        if show_property:
+            st.html(property_tag(turn.property))
         st.markdown(safe_markdown(turn.question))
     with st.chat_message("assistant", avatar=BOT_AVATAR):
         render_answer(turn)
@@ -293,9 +331,87 @@ def log_turn(turn: Turn, kind: str, **fields):
             topic_group=topic.label if topic else None,
             follow_ups=turn.suggestions,
             follow_up_label=turn.suggestion_label,
+            rewritten=turn.rewritten,
+            rewrite_method=turn.rewrite_method,
             **fields,
         )
     )
+
+
+def understand(question: str, prop: str) -> rewrite.Rewrite:
+    """The standalone question for retrieval and the model. If the rewrite call fails, the question is used as
+    typed: a follow-up may then be answered less well, but the visitor still gets an answer."""
+    try:
+        return rewrite.standalone(question, chat.current.turns, prop, property_name=b.property_name)
+    except Exception as exc:  # the answer call reports outages; the rewrite only degrades
+        log.warning("rewrite failed, using the question as typed: %s", private_detail(exc))
+        return rewrite.Rewrite(question, question, rewrite.resolve_property(question, prop))
+
+
+def render_shared(token: str):
+    """A shared link: the conversation inside it, read-only. No chat input, no API call, everything escaped."""
+    turns = share.decode(token)
+    if not turns:
+        st.warning("This shared link is damaged or incomplete. Ask for a new one.", icon=":material/link_off:")
+    else:
+        st.info(SHARED_NOTE, icon=":material/visibility:")
+        for t in turns:
+            with st.chat_message("user", avatar=USER_AVATAR):
+                if t["p"] in props:
+                    st.html(property_tag(t["p"]))
+                st.markdown(safe_markdown(t["q"]))
+            with st.chat_message("assistant", avatar=BOT_AVATAR):
+                if t["u"]:
+                    st.html(f'<p class="hoa-understood">Understood as: {esc(t["u"])}</p>')
+                st.markdown(safe_markdown(t["a"]))
+                if t["s"]:
+                    st.caption("Sources: " + "; ".join(t["s"]))
+    if st.button("Start your own conversation", icon=":material/add_comment:", key="leave_shared"):
+        st.query_params.clear()
+        st.rerun()
+    ui.footer()
+
+
+def conversation_list():
+    """Sidebar: past conversations this session (newest first); one click reopens one."""
+    if not chat.past:
+        return
+    st.caption("Past conversations")
+    for c in chat.past:
+        st.button(
+            c.title(),
+            key=f"conv_{c.id}",
+            icon=":material/history:",
+            on_click=reopen_conversation,
+            args=(c.id,),
+            width="stretch",
+            type="tertiary",
+            help=f"Started {c.started} · {len(c.turns)} message(s)",
+        )
+
+
+def share_panel():
+    """Sidebar: 'Share this conversation' builds a read-only link after the personal-data check."""
+    if not chat.has_messages():
+        return
+    st.button(
+        "Share this conversation",
+        key="share_conversation",
+        icon=":material/share:",
+        on_click=make_share_link,
+        width="stretch",
+        help=SHARE_HELP,
+    )
+    link = st.session_state.get("share_link")
+    if not link:
+        return
+    if not link["token"]:
+        st.caption("This conversation is too long to fit in a link. Start a new one and share that.")
+        return
+    if link["found"]:
+        st.caption("Replaced before sharing: " + ", ".join(link["found"]) + ".")
+    st.caption("Read-only link (copy it with the icon):")
+    st.code(share.share_url(st.context.url, link["token"]), language=None, wrap_lines=True)
 
 
 def handle(raw: str, prop: str, source: str = "typed"):
@@ -314,21 +430,33 @@ def handle(raw: str, prop: str, source: str = "typed"):
         st.info(SESSION_LIMIT, icon=":material/hourglass_bottom:")
         log_turn(turn, "answer", pre_api=True, error="session_cap", error_message=SESSION_LIMIT)
         return
+    previous = chat.current.turns[-1].property if chat.current.turns else None
+    rw = understand(question, prop)
+    turn.property, turn.rewrite_method = rw.property, rw.method
+    turn.rewritten = rw.question if rw.changed else None
+    usage_fields = {"rewrite_usage": rw.usage}
+    if rw.property != prop:  # "what about at Mountain Lodge?": the picker follows on the next run
+        st.session_state.switch_property = rw.property
+    prop, standalone = rw.property, rw.question
     with st.chat_message("user", avatar=USER_AVATAR):
+        if previous and previous != prop:
+            st.html(property_tag(prop))
         st.markdown(safe_markdown(question))
     with st.chat_message("assistant", avatar=BOT_AVATAR):
-        prep = service.prepare(retriever, question, prop)
+        prep = service.prepare(retriever, standalone, prop)
+        if is_safety(question) and not prep.get("safety"):  # the message as typed decides an emergency too
+            prep = {"blocked": True, "safety": True, "hits": [], "signals": prep["signals"]}
         if prep["blocked"]:  # off-topic or gibberish: answered without an API call
-            turn.result = service.finalize(question, prop, service.blocked_result(question))
-            finish(turn, "refusal" if prep.get("safety") else "scope", pre_api=True)
+            turn.result = service.finalize(standalone, prop, service.blocked_result(question))
+            finish(turn, "refusal" if prep.get("safety") else "scope", pre_api=True, **usage_fields)
         elif not ui.daily_counter().try_consume():
             turn.error = DAILY_LIMIT
-            log_turn(turn, "answer", pre_api=True, error="daily_cap", error_message=DAILY_LIMIT)
+            log_turn(turn, "answer", pre_api=True, error="daily_cap", error_message=DAILY_LIMIT, **usage_fields)
             chat.add(turn)
         else:
             waiting = st.empty()
             waiting.caption("Checking the hotel's documents...")
-            run = AnswerStream(question, prop, prep["hits"])
+            run = AnswerStream(standalone, prop, prep["hits"])  # the model sees only this question + passages
             streamed = st.empty()  # cleared for a refusal, which gets the recovery message instead
             try:
                 with streamed:
@@ -339,13 +467,15 @@ def handle(raw: str, prop: str, source: str = "typed"):
                 log.error("answer failed: %s (%s) %s", code, category(code), private_detail(exc))
                 record_error("Assistant", exc)
                 turn.error = friendly(code)
-                log_turn(turn, "answer", hits=prep["hits"], error=code, error_message=safe_message(exc))
+                fields = {"hits": prep["hits"], "error": code, "error_message": safe_message(exc), **usage_fields}
+                log_turn(turn, "answer", **fields)
                 chat.add(turn)
                 render_answer(turn)
                 return
-            turn.result = service.finalize(question, prop, run.result)
+            turn.result = service.finalize(standalone, prop, run.result)
             kind = "answer" if turn.result["found"] else "refusal"
-            finish(turn, kind, hits=prep["hits"], ttft=run.time_to_first_token, total=run.total_time)
+            total = run.total_time + rw.seconds  # the visitor waited for the rewrite too
+            finish(turn, kind, hits=prep["hits"], ttft=run.time_to_first_token, total=total, **usage_fields)
             text_shown = isinstance(shown, str) and shown.strip() == safe_markdown(turn.result["answer"]).strip()
             if kind == "refusal":
                 streamed.empty()
@@ -357,6 +487,13 @@ def handle(raw: str, prop: str, source: str = "typed"):
 # ---------- page ----------
 props = retriever.properties()
 st.session_state.setdefault("property", props[0])
+if (switch := st.session_state.pop("switch_property", None)) in props:  # set by a follow-up or a reopened chat
+    st.session_state.property = switch
+
+if shared_token := st.query_params.get("share"):
+    ui.header(b.name, b.tagline)
+    render_shared(shared_token)
+    st.stop()
 
 ui.header(b.name, b.tagline)
 # In the page (not the sidebar) so it's visible on phones, where the sidebar starts collapsed.
@@ -369,6 +506,8 @@ with st.sidebar:
     # enabled as soon as the first answer appears.
     new_chat_slot = st.empty()
     questions_left = st.empty()
+    share_slot = st.container()
+    history_slot = st.container()
 
 if st.session_state.pop("scroll_top", False):
     ui.scroll_to_top()
@@ -398,8 +537,9 @@ else:  # in a conversation there's room for the property's highlights
         f'<div class="hoa-property"><b>{esc(b.property_name(prop))}</b><span>{esc(b.highlights(prop))}</span></div>'
     )
 
+spans = len({t.property for t in history}) > 1
 for turn in history:
-    render_turn(turn)
+    render_turn(turn, show_property=spans)
 
 if incoming:
     handle(incoming["question"], prop, incoming.get("source", "typed"))
@@ -419,6 +559,10 @@ new_chat_slot.button(
     disabled=not has_messages,
     help=None if has_messages else NEW_CHAT_EMPTY_HELP,
 )
+with share_slot:
+    share_panel()
+with history_slot:
+    conversation_list()
 questions_left.caption(
     f"{remaining(chat.asked, MAX_QUESTIONS_PER_SESSION)} of {MAX_QUESTIONS_PER_SESSION} demo questions left "
     "in this session."

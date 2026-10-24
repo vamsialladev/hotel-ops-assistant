@@ -20,3 +20,15 @@ def no_live_settings(monkeypatch):
     store.reset_connection()
     yield
     store.reset_connection()
+
+
+@pytest.fixture(autouse=True)
+def no_rewrite_api(monkeypatch):
+    """The follow-up rewrite (src/rewrite.py) would call the API on any second question. Tests never do: the call
+    fails here, so the page falls back to the question as typed. Tests of the rewrite replace call_model."""
+    from src import rewrite
+
+    def offline(*args, **kwargs):
+        raise RuntimeError("no model calls in tests")
+
+    monkeypatch.setattr(rewrite, "call_model", offline)

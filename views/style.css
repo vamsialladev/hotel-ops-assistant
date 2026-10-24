@@ -61,6 +61,11 @@ h1, h2, h3 { letter-spacing: -0.01em; }
 .hoa-note q { display: block; margin-top: .4rem; color: var(--hoa-muted); font-style: italic; quotes: "\201C" "\201D"; }
 .hoa-note small { display: block; color: var(--hoa-muted); margin-top: .25rem; font-size: .8rem; }
 .hoa-check { color: var(--hoa-warn-ink); font-size: .9rem; margin: .3rem 0; }
+/* Follow-ups: the standalone question the answer was found for, and the property of a turn */
+.hoa-understood { color: var(--hoa-muted); font-size: .82rem; font-style: italic; margin: 0 0 .3rem; }
+.hoa-turn-prop { display: inline-block; font-size: .72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--hoa-muted); border: 1px solid var(--hoa-line, #ccc); border-radius: 999px;
+  padding: 0 .5rem; margin-bottom: .2rem; }
 
 /* Source chips */
 .hoa-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin: .55rem 0 .2rem; }

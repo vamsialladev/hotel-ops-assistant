@@ -74,14 +74,20 @@ def usage_record(
     follow_ups: list | None = None,
     follow_up_label: str | None = None,
     error_message: str | None = None,
+    rewritten: str | None = None,
+    rewrite_method: str = "none",
+    rewrite_usage: dict | None = None,
     price_in: float | None = PRICE_IN_PER_M,
     price_out: float | None = PRICE_OUT_PER_M,
 ) -> dict:
     """One complete log record per request (schema in docs/ARCHITECTURE.md): what was asked, what happened,
     the full answer, citations, follow-ups, every retrieved passage (cited or not), timing, tokens, cost,
-    checks and errors. Secrets are masked by usage.log_usage before anything is written."""
+    checks and errors. Secrets are masked by usage.log_usage before anything is written. A follow-up's rewrite call
+    (src/rewrite.py) is included in the tokens and cost, and also recorded on its own."""
     usage = (result or {}).get("usage", {"input_tokens": 0, "output_tokens": 0})
-    tokens_in, tokens_out = usage["input_tokens"], usage["output_tokens"]
+    rw = rewrite_usage or {"input_tokens": 0, "output_tokens": 0}
+    tokens_in = usage["input_tokens"] + rw["input_tokens"]
+    tokens_out = usage["output_tokens"] + rw["output_tokens"]
     citations = (result or {}).get("citations", [])
     cited = {passage_key(c) for c in citations}
     cost = estimate_cost(tokens_in, tokens_out, price_in, price_out)
@@ -95,7 +101,11 @@ def usage_record(
         "kind": kind or ("refusal" if result and not result["found"] else "answer" if result else None),
         "property": prop,
         "question": question,
-        "model": None if pre_api else LLM_MODEL,
+        "rewritten_question": rewritten if rewritten and rewritten != question else None,
+        "rewrite_method": rewrite_method,
+        "rewrite_tokens_in": rw["input_tokens"],
+        "rewrite_tokens_out": rw["output_tokens"],
+        "model": None if pre_api and not rw["input_tokens"] else LLM_MODEL,
         "max_tokens": LLM_MAX_TOKENS,
         "mode": mode,
         "tokens_in": tokens_in,
