@@ -34,6 +34,11 @@ USE_EMBEDDINGS = os.getenv("USE_EMBEDDINGS", "true").lower() in {"1", "true", "y
 # Hybrid mode only: a question with no keyword match and no passage at least this similar is out of scope.
 SCOPE_MIN_SIMILARITY = float(os.getenv("SCOPE_MIN_SIMILARITY", "0.27"))
 
+# Follow-up questions (P-Fix-B): the latest message is rewritten into a standalone question from the last 3 turns.
+# llm = one short Haiku call when there is an earlier turn; rule = deterministic rules, no API; off = as before.
+REWRITE_MODE = os.getenv("REWRITE_MODE", "llm").strip().lower()
+MAX_SAVED_CONVERSATIONS = int(os.getenv("MAX_SAVED_CONVERSATIONS", "10"))  # past conversations kept per session
+
 # Public demo protections
 MAX_QUESTION_CHARS = int(os.getenv("MAX_QUESTION_CHARS", "500"))
 MAX_QUESTIONS_PER_SESSION = int(os.getenv("MAX_QUESTIONS_PER_SESSION", "20"))

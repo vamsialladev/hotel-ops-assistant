@@ -3,6 +3,19 @@
 Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added (P-Fix-B: real chat)
+- **Follow-up questions:** the latest message is rewritten into a standalone question from the last 3 turns (one
+  short Haiku call; `REWRITE_MODE=llm|rule|off`), shown as "Understood as: ..."; only that question and the passages
+  reach the model. Naming the other hotel asks about it and moves the picker. Decision 59.
+- **One conversation across both hotels**, "Past conversations" in the sidebar (reopen one), "New conversation"
+  keeps the old one for the browser session.
+- **Share this conversation:** a read-only link with the conversation compressed inside the URL, personal data
+  replaced first (`src/share.py`); opening it never calls the API.
+- Multi-turn eval (`eval/run_multiturn_eval.py`, 15 + 4 held-out cases, 3 runs): answer accuracy 67% → 96%, p95
+  2.95 s → 3.58 s, $0.18 → $0.22 per 1,000 requests. Free CI gate on follow-up retrieval (rule rewrite, 17/18).
+- `scripts/make_captions.py` (captions from my own voice) and `docs/VIDEO_SCRIPT.md` with one follow-up.
+### Fixed
+- Grader: "I can't tell the guest the fee is waived" no longer counts as asserting the waiver.
 ### Changed
 - README first screen: value line, demo video slot, "Try it live" with the wake note, At a glance with a cost row;
   new "Design at scale" section; Business value names who benefits and how a pilot would measure it.

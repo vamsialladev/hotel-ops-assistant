@@ -412,3 +412,84 @@ def test_locked_admin_shows_no_log_data_or_downloads(logged_app):
     at.switch_page("views/admin.py").run()
     assert not at.get("download_button") and not at.dataframe
     assert "Can a guest bring their dog?" not in " ".join(e.value for e in at.markdown)
+
+
+# ---------- follow-ups, past conversations and shared links (P-Fix-B) ----------
+def fake_rewrite(monkeypatch, text="Can a guest bring their dog to Mountain Lodge?"):
+    import src.rewrite as rewrite
+
+    calls = []
+
+    def fake(request, client=None):
+        calls.append(request)
+        return text, {"input_tokens": 100, "output_tokens": 12}
+
+    monkeypatch.setattr(rewrite, "call_model", fake)
+    return calls
+
+
+def test_a_follow_up_is_understood_with_the_earlier_turn_and_switches_property(chat_app, monkeypatch):
+    at, logs = chat_app
+    calls = fake_rewrite(monkeypatch)
+    at.run()
+    at.chat_input(key="chat_input").set_value("Can a guest bring their dog?").run()
+    assert not calls  # the first question has nothing to resolve against: no rewrite call
+    at.chat_input(key="chat_input").set_value("What about at Mountain Lodge?").run()
+    assert len(calls) == 1 and "Can a guest bring their dog?" in calls[0]["messages"][0]["content"]
+    assert "Understood as: Can a guest bring their dog to Mountain Lodge?" in html_text(at)
+    chat = at.session_state["chat"]
+    assert [t.property for t in chat.history()] == ["beach-resort", "mountain-lodge"]
+    record = read_jsonl(logs / "usage.jsonl")[-1]
+    assert record["rewritten_question"] == "Can a guest bring their dog to Mountain Lodge?"
+    assert (record["rewrite_method"], record["rewrite_tokens_in"], record["property"]) == ("llm", 100, "mountain-lodge")
+    at.run()
+    assert at.session_state["property"] == "mountain-lodge"  # the picker followed the question
+
+
+def test_a_failed_rewrite_still_answers_the_question_as_typed(chat_app):
+    at, logs = chat_app  # conftest makes every rewrite call fail
+    at.run()
+    at.chat_input(key="chat_input").set_value("Can a guest bring their dog?").run()
+    at.chat_input(key="chat_input").set_value("And for service animals?").run()
+    assert not at.exception and "Understood as" not in html_text(at)
+    assert len(at.session_state["chat"].history()) == 2
+
+
+def test_new_conversation_keeps_the_old_one_in_the_list_and_reopens_it(chat_app):
+    at, _ = chat_app
+    at.run()
+    at.chat_input(key="chat_input").set_value("Can a guest bring their dog?").run()
+    at.sidebar.button(key="new_conversation").click().run()
+    chat = at.session_state["chat"]
+    old = chat.past[0]
+    assert at.sidebar.button(key=f"conv_{old.id}").label == "Can a guest bring their dog?"
+    at.sidebar.button(key=f"conv_{old.id}").click().run()
+    assert [t.value for t in at.toast] == ["Reopened a past conversation"]
+    assert at.chat_message[0].markdown[0].value == "Can a guest bring their dog?"
+
+
+def test_share_builds_a_read_only_link_that_opens_without_a_chat_input(chat_app):
+    at, _ = chat_app
+    at.run()
+    at.chat_input(key="chat_input").set_value("Can a guest bring their dog? My email is jo@mail.test").run()
+    at.sidebar.button(key="share_conversation").click().run()
+    link = at.sidebar.code[0].value
+    assert "?share=" in link
+    assert any("an email address" in c.value for c in at.sidebar.caption)  # replaced, and the visitor is told
+    token = link.split("?share=", 1)[1]
+
+    shared = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60)
+    shared.query_params["share"] = token
+    shared.run()
+    assert not shared.exception
+    assert any("Shared conversation (read-only)" in i.value for i in shared.info)
+    assert shared.chat_message[0].markdown[0].value.startswith("Can a guest bring their dog?")
+    assert "jo@mail.test" not in " ".join(m.value for m in shared.chat_message[0].markdown)
+    assert not shared.get("chat_input")
+
+
+def test_a_damaged_shared_link_says_so(app):
+    at, _ = app
+    at.query_params["share"] = "damaged"
+    at.run()
+    assert not at.exception and any("damaged or incomplete" in w.value for w in at.warning)

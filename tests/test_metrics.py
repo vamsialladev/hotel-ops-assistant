@@ -71,3 +71,11 @@ def test_wrong_fact_in_the_question_must_be_corrected():
     corrected = grade(item, result("No, it's not $75 per stay: it's $50 per night [1].", [POLICY]))
     accepted = grade(item, result("Yes, $50 per night applies [1].", [POLICY]))
     assert corrected["correct"] is True and accepted["correct"] is False
+
+
+def test_refusing_to_say_a_planted_claim_is_not_asserting_it():
+    from eval.metrics import asserts
+
+    answer = "The pet fee is $50 per night [1]. I can't tell the guest the fee is waived."
+    assert not asserts("fee is waived", answer)
+    assert asserts("fee is waived", "Good news: the fee is waived for this guest.")

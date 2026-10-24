@@ -13,7 +13,7 @@ import streamlit as st
 
 from src.branding import DEMO_LABEL, load_branding
 from src.chat import ChatState
-from src.config import LOG_DIR, MAX_QUESTIONS_PER_DAY, ROOT, USE_EMBEDDINGS
+from src.config import LOG_DIR, MAX_QUESTIONS_PER_DAY, MAX_SAVED_CONVERSATIONS, ROOT, USE_EMBEDDINGS
 from src.display import esc
 from src.errors import PAGE_ERROR, is_control_flow, record_error
 from src.limits import DailyCounter
@@ -110,14 +110,22 @@ def asset(path: str) -> str:
 
 def recent_answers() -> list[tuple[str, str]]:
     """This session's answered or refused questions, newest first, for the staff report form."""
-    turns = [t for h in chat_state().histories.values() for t in h if t.result and t.kind in ("answer", "refusal")]
+    chat = chat_state()
+    turns = [t for c in [*reversed(chat.past), chat.current] for t in c.turns]
+    turns = [t for t in turns if t.result and t.kind in ("answer", "refusal")]
     return [(t.id, t.question) for t in reversed(turns)][:10]
 
 
 def chat_state() -> ChatState:
-    if "chat" not in st.session_state:
-        st.session_state.chat = ChatState()
-    return st.session_state.chat
+    """The visitor's chat. A session started before the multi-turn update holds the old per-property state;
+    it is replaced (the conversation on screen is lost once, the question count is kept)."""
+    chat = st.session_state.get("chat")
+    if chat is None or not hasattr(chat, "current"):
+        fresh = ChatState(max_saved=MAX_SAVED_CONVERSATIONS)
+        if chat is not None:
+            fresh.asked, fresh.messages = getattr(chat, "asked", 0), getattr(chat, "messages", 0)
+        st.session_state.chat = chat = fresh
+    return chat
 
 
 def scroll_to_top():

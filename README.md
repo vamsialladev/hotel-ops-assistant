@@ -65,7 +65,8 @@ Staff have to find the right document for the right hotel while the guest waits.
 **For front-desk staff (Assistant page)**
 - **Knows what to ask, from the first second:** a "How to use" strip, a "What this demo knows" panel whose topic chips come from the indexed documents, three good-question examples and a rotating "Try: …" hint, on first visit and after every New conversation. Click a suggestion or type your own question.
 - **Never a dead end:** related questions under each answer (picked by the topic of the cited section, never repeating one already asked); after a refusal, "Did you mean" questions and topic chips; "hi" or "what can you do?" gets an instant reply with examples (no API call, not counted); gibberish or unrelated questions get a polite scope message with popular questions. Every suggestion comes from a curated list that's tested to get a real answer.
-- **Property-aware chat:** pick Beach Resort or Mountain Lodge; each keeps its own history, and "New conversation" clears only the current one.
+- **Real follow-ups:** "what about at Mountain Lodge?" or "and for Gold members?" work. The latest message is rewritten into one standalone question from the last 3 turns, shown under the answer as "Understood as: …"; retrieval and the answer model see only that question and the passages, never the raw conversation. Naming the other hotel switches the property for that question and the picker follows.
+- **Conversations you can come back to and share:** one conversation can span both hotels; "New conversation" keeps the old one in a "Past conversations" list for the browser session, one click reopens it. "Share this conversation" makes a read-only link with the conversation compressed inside the URL (nothing stored on a server); personal details are replaced before the link is made.
 - **Cited answers, streamed:** the first words appear in about a second; every fact has a numbered citation, a source chip (document › section, property-specific or brand-wide, effective date) and the quoted text under **Sources**.
 - **Refuses rather than guesses**, and refuses off-topic questions before calling the API when nothing in the documents matches.
 - **Corrects wrong facts in the question:** "Can a guest bring their dog? (expect $75 per stay)" at Mountain Lodge answers "The $75 per-stay figure isn't correct: the pet fee is $50 per night…".
@@ -261,6 +262,25 @@ All 76 curated suggestions retrieve their topic and get a real answer. CI gates 
 <img src="docs/images/eval-retrieval.png" alt="Eval output: 44 of 45 answerable questions retrieve the exact passage, 2 of 5 off-topic questions refused before the API, 0 answerable questions blocked, 54 of 54 escalation rules correct" width="760">
 </details>
 
+### Follow-up questions (multi-turn eval, 2026-10-24)
+
+15 multi-turn cases (pronoun follow-ups, property switches, injection in turn 1 or 2, topic change, after a
+refusal, must-refuse, Spanish) + 4 held-out, every turn answered live, 3 runs, keyword-only search. Only the last
+turn is graded. Before = each question answered as typed; after = the latest message rewritten by one short Haiku
+call ([decision 59](docs/DECISIONS.md)).
+
+| | Before | After |
+|---|---|---|
+| Answer accuracy (dev) | 67% (30/45) | **96% (43/45)** |
+| Right property (dev) | 73% | **100%** |
+| Strict retrieval (dev) | 64% (27/42) | **95% (40/42)** |
+| Answer accuracy (held-out, 4 cases) | 75% (9/12) | 92% (11/12) |
+| p95, last turn (dev) | 2.95 s | 3.58 s |
+| Cost per 1,000 requests (dev, every turn) | $0.18 | $0.22 |
+
+A rule-based rewrite scored 87% on dev (100% on the 4 held-out cases) but copied a planted instruction into the
+next question; reports in `eval/reports/multiturn-2026-10-24-*`.
+
 ### What the eval taught me
 1. **My grader passed a wrong answer.** "Can a 16-year-old book a facial?" only required "18", so *"Yes, a 16-year-old can book a facial. The spa requires guests to be 18 or older"* passed. That model's reported accuracy dropped from 97% to 95% once the check also forbade "can book".
 2. **The same grader also failed a safe answer.** The model quoted the injected "fees are waived" note in order to reject it, and a substring check flagged it. Sentence-level checks fixed most cases; the rest are read by hand every run, and a calibrated LLM judge is Project 3.
@@ -396,6 +416,8 @@ The command-line tools (`ask.py`, the eval) read only the environment and `.env`
 | `SCOPE_MIN_SIMILARITY` | `0.27` | Hybrid only: below this, with no keyword match, a question is refused before the API |
 | `MAX_QUESTION_CHARS` | `500` | Longest question accepted (enforced on the server) |
 | `MAX_QUESTIONS_PER_SESSION` | `20` | Questions per browser session |
+| `REWRITE_MODE` | `llm` | Follow-ups: `llm` (one short Haiku call per follow-up), `rule` (no API) or `off` (each question as typed) |
+| `MAX_SAVED_CONVERSATIONS` | `10` | Past conversations kept per browser session |
 | `MAX_QUESTIONS_PER_DAY` | `200` | Questions per day across all visitors (server-side, survives refresh) |
 | `LOG_MAX_ENTRIES` | `5000` | Usage and feedback logs keep only the newest entries |
 | `PRICE_IN_PER_M` / `PRICE_OUT_PER_M` | unset | USD per million tokens, for cost estimates on the Admin page (Haiku 5.5: `0.10` / `0.50`) |

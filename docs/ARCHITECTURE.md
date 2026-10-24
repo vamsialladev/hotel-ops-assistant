@@ -35,13 +35,17 @@ sequenceDiagram
     participant Log as Usage log
     Staff->>App: Picks property, asks a question
     App->>App: validate_question(), session limit
-    App->>Svc: prepare(question, property)
+    opt an earlier turn exists (follow-up)
+        App->>LLM: last 3 turns + latest message: rewrite as one standalone question (src/rewrite.py)
+        LLM-->>App: standalone question (shown as "Understood as")
+    end
+    App->>Svc: prepare(standalone question, property)
     Svc->>Search: signals() + search()
     alt nothing matches (off-topic)
         Svc-->>App: blocked: fixed scope message, no API call
     else passages found
         App->>App: daily cap check
-        App->>LLM: rules + numbered passages + this question only
+        App->>LLM: rules + numbered passages + the standalone question only (never the raw history)
         LLM-->>App: streamed text, then final message and usage
         App->>Svc: finalize(): grounding check, manager rules, topic
     end
