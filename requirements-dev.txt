@@ -6,4 +6,4 @@ ruff==0.16.10
 reportlab~=5.0
 pillow~=13.0
 pip-audit~=2.10
-playwright~=1.63  # scripts/capture_screenshots.py and record_demo.py only
+playwright~=1.64  # scripts/capture_screenshots.py and record_demo.py only
