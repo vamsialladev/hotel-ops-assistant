@@ -71,6 +71,23 @@ def startup_checks() -> list[str]:
     return log_missing()
 
 
+@st.cache_resource(show_spinner=False)
+def structured_startup_log() -> bool:
+    """Once per server start, the same JSON lines every hotel app writes (hotel-ai-platform jsonlog): app start
+    with the deployed version, which settings are set or missing (never values), and dependency status."""
+    from hotelplatform import jsonlog
+
+    from src import ops
+    from src.config import LLM_MODEL
+    from src.secrets_check import OPTIONAL, RECOMMENDED, REQUIRED
+
+    ops.configure_logs()
+    jsonlog.app_start(app_version=ops.APP_VERSION)
+    jsonlog.config_loaded(list(REQUIRED + RECOMMENDED + OPTIONAL), model=LLM_MODEL, embeddings=USE_EMBEDDINGS)
+    jsonlog.dependency_health(ops.dependencies(retriever().mode))  # the mode actually loaded, not the setting
+    return True
+
+
 @contextmanager
 def error_boundary(page: str):
     """Top-level guard for every page: an unexpected exception shows a friendly message, is recorded for the
