@@ -503,7 +503,7 @@ building the eval: the grader read "I can't tell the guest the fee is waived" as
 `eval/metrics.py`, with a test; the eval was re-run once after the fix). API spend: about $0.07 for the saved runs
 plus about $0.05 for a first run stopped to fix that grader bug.
 
-## 60. Shared guardrails and tracing from one package (hotel-ai-platform v0.1.0, 2026-10-25)
+## 60. Shared guardrails and tracing from one package (hotel-ai-platform v0.1.2, 2026-10-25)
 **Context:** The final plan adds input/output guardrails, a red-team suite, request tracing and a shared request
 log to every hotel app. This app already had its own PII redaction, request log and Admin page.
 **Decision:** Install the shared package at a release tag and wire it in one module (`src/ops.py`). Keep this app's

@@ -7,7 +7,7 @@ CI runs it on every push and fails on any new miss).
 
 Through this app's real defences before the API, in the order a question meets them:
 
-1. Input guardrails (`src/ops.py` → hotel-ai-platform v0.1.0): length, language, attack patterns, card/ID numbers.
+1. Input guardrails (`src/ops.py` → hotel-ai-platform v0.1.2): length, language, attack patterns, card/ID numbers.
 2. The scope check and emergency rule (`service.prepare`).
 3. Passage quarantine (`service.quarantine_passages`): planted instructions removed from retrieved documents.
 4. Output guardrails on the model's answer: promises, leaked contact details, prompt leaks, uncited answers.
