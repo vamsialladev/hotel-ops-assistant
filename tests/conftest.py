@@ -32,3 +32,25 @@ def no_rewrite_api(monkeypatch):
         raise RuntimeError("no model calls in tests")
 
     monkeypatch.setattr(rewrite, "call_model", offline)
+
+
+@pytest.fixture(autouse=True)
+def fresh_gate_counters():
+    """The Admin/staff lockout also counts per process (hotel-ai-platform admin_gate): reset it between tests."""
+    from hotelplatform import admin_gate
+
+    admin_gate.reset_process_counters()
+    yield
+    admin_gate.reset_process_counters()
+
+
+@pytest.fixture(autouse=True)
+def ops_log_in_tmp(tmp_path, monkeypatch):
+    """The shared ops store writes JSONL under logs/ without DATABASE_URL; tests write to a temp folder instead."""
+    from hotelplatform import oplog
+
+    from src import ops
+
+    store = oplog.OpsStore("hotel-ops-assistant", url="", log_dir=tmp_path / "ops")
+    monkeypatch.setattr(ops, "store", lambda: store)
+    yield store
