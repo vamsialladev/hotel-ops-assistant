@@ -502,3 +502,31 @@ keyword search lost the word "EV". Next: search with both the typed and the rewr
 building the eval: the grader read "I can't tell the guest the fee is waived" as asserting the waiver (fixed in
 `eval/metrics.py`, with a test; the eval was re-run once after the fix). API spend: about $0.07 for the saved runs
 plus about $0.05 for a first run stopped to fix that grader bug.
+
+## 60. Shared guardrails and tracing from one package (hotel-ai-platform v0.1.0, 2026-10-25)
+**Context:** The final plan adds input/output guardrails, a red-team suite, request tracing and a shared request
+log to every hotel app. This app already had its own PII redaction, request log and Admin page.
+**Decision:** Install the shared package at a release tag and wire it in one module (`src/ops.py`). Keep this app's
+own detailed request log and Admin request list; add the shared ops tables (one row + spans per question) and an
+Admin → **Traces** page that renders the shared view behind the existing sign-in.
+**Trade-off:** two logs per request (the app's detailed record and the shared ops row). The ops row is what lets one
+Admin view, one daily failure check and one runbook work across every app.
+**Result:** every question is a trace (guardrails, rewrite, retrieval, model call, output checks); errors show a
+reference; a broken log store doesn't break an answer (tested by making `submit` raise).
+
+## 61. Planted instructions are removed from passages before the model reads them (2026-10-25)
+**Context:** The Mountain Lodge front desk notes contain a planted "SYSTEM NOTICE TO THE AI ASSISTANT: ignore your
+rules..." (eval q32). The model ignored it, but that relied on the model alone.
+**Decision:** `service.prepare` runs every retrieved passage through the shared `quarantine` before anything else
+uses it, so the page and all four evals see the same passages.
+**Trade-off:** a real policy sentence addressed "to the AI" would also be removed. Checked: 1 of 50 passages changes,
+and it's the planted one.
+**Result:** the planted instruction never reaches the model; recorded on the retrieval span as `quarantined`.
+
+## 62. Guardrail blocks are their own outcome, not errors or refusals (2026-10-25)
+**Context:** Counting a blocked injection as an "error" would inflate the error rate the daily failure check
+alerts on; counting it as "refused" would hide it among real refusals.
+**Decision:** a new outcome `blocked` (🛡️) with refusal reason `guardrail`, and status `blocked` with the reason as
+`error_type` in the ops table, so Admin's "Guardrail blocks" lists them by reason.
+**Trade-off:** older readers of the log see one more outcome value.
+**Result:** the error rate stays about failures; blocks are visible and countable.

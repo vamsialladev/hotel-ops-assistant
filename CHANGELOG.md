@@ -3,6 +3,17 @@
 Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added (final stage: guardrails, tracing, red team; 1.7.0)
+- Shared guardrails from [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform) v0.1.0
+  (`src/ops.py`): input checks before the rewrite and the API, output checks after the model. Decision 60.
+- Passages pass through the shared quarantine before the model (the planted front desk note). Decision 61.
+- New outcome `blocked` with refusal reason `guardrail`. Decision 62.
+- One trace per question in the shared `ops_request_log` / `ops_trace_span` tables; "Reference: ..." on errors;
+  Admin → Traces (waterfall, error rate, p50/p95, cost vs caps, guardrail blocks, health, CSV); feedback linked to
+  the trace; structured JSON startup log lines; keep-awake visits (`?source=keepawake`) ask and log nothing.
+- Red-team suite (`scripts/run_redteam.py`, `redteam/cases.jsonl`, docs/RED_TEAM.md) in CI.
+### Changed
+- Admin and staff lockout counted per server process as well as per session.
 ### Added (P-Fix-B: real chat)
 - **Follow-up questions:** the latest message is rewritten into a standalone question from the last 3 turns (one
   short Haiku call; `REWRITE_MODE=llm|rule|off`), shown as "Understood as: ..."; only that question and the passages
