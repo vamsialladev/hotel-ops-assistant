@@ -47,6 +47,16 @@ jobs:
         run: python -m eval.run_suggestions_eval --bm25-only
       - name: "Multi-turn gate: follow-ups find the right property and passage with the rule rewrite (free, measured 17/18)"
         run: python -m eval.run_multiturn_eval --modes rule --no-answers --split all --no-report --min-retrieval 0.94
+      - name: "Red-team gate: shared corpus + this app's cases through the real pre-API defences (free; fails on any new miss)"
+        run: python scripts/run_redteam.py
+      - name: SBOM (CycloneDX) of the installed runtime
+        run: |
+          pip install "cyclonedx-bom~=7.1"
+          cyclonedx-py environment --output-format JSON --output-file sbom.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: sbom.json
 
   harness-gates:
     name: "Eval harness gates (hoteleval v1.0.0, recorded mode, no API)"
