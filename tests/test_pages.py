@@ -113,6 +113,14 @@ def test_note_under_the_chat_input_links_to_the_document_library(app):
     assert '<a href="library" target="_self">Document library</a>' in text
 
 
+def test_sidebar_links_to_the_demo_video_github_and_portfolio(app):
+    at, _ = app
+    at.run()
+    text = html_text(at)
+    assert 'href="https://vamsialla.com/projects/hotel-ops-assistant.html#demo"' in text and ">Watch the demo<" in text
+    assert ">GitHub<" in text and 'href="https://vamsialla.com"' in text
+
+
 def test_admin_health_shows_missing_secrets_by_name_only(app, monkeypatch):
     at, _ = app
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)

@@ -108,7 +108,8 @@ flowchart LR
     B --> C["Keyword index<br/>BM25"]
     B --> D["Vector index<br/>(hybrid mode)"]
     Q["Staff question<br/>+ property"] --> V["Input checks<br/>limits, scope"]
-    V --> F["Property filter"]
+    V --> R["Follow-up rewrite<br/>Claude Haiku 5.5, only after an earlier turn<br/>'Understood as' shown"]
+    R --> F["Property filter"]
     C --> H["Search + rank fusion"]
     D --> H
     F --> H
@@ -127,9 +128,13 @@ sequenceDiagram
     participant App as Streamlit app
     participant Search as Retriever
     participant LLM as Claude API
-    Staff->>App: Picks property, asks a question
+    Staff->>App: Picks property, asks a question (or a follow-up)
     App->>App: Clean input, check length, session and daily limits
-    App->>Search: Scope check + search(question, property)
+    opt a follow-up ("what about at Mountain Lodge?")
+        App->>LLM: Last 3 turns + the message
+        LLM-->>App: One standalone question ("Understood as")
+    end
+    App->>Search: Scope check + search(standalone question, property)
     Search-->>App: Top 5 passages (or nothing: refuse, no API call)
     App->>LLM: Rules + numbered passages + this question only
     LLM-->>App: Streamed answer with [n] citations, or the refusal
