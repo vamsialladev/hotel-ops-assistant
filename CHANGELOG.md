@@ -12,6 +12,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow
   Admin → Traces (waterfall, error rate, p50/p95, cost vs caps, guardrail blocks, health, CSV); feedback linked to
   the trace; structured JSON startup log lines; keep-awake visits (`?source=keepawake`) ask and log nothing.
 - Red-team suite (`scripts/run_redteam.py`, `redteam/cases.jsonl`, docs/RED_TEAM.md) in CI.
+- Eval after the change (2026-10-25, live keyword-only, 3 runs, `eval/reports/2026-10-25_1906_bm25_answers_claude-haiku-5-5.md`):
+  answer accuracy 100% (162/162), strict retrieval 45/45, refusals 27/27, escalation 54/54, p95 3.22 s, $0.17 per
+  1,000: the same as the v1.6.0 release run. An earlier run of the same code (54, 53, 53 of 54) crashed on a Windows
+  console encoding error before it saved, so its two misses weren't recorded; it isn't counted.
 ### Changed
 - Admin and staff lockout counted per server process as well as per session.
 ### Added (P-Fix-B: real chat)

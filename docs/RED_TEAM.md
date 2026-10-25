@@ -25,6 +25,10 @@ eval's injection cases (q32, m08) with live answers.
 
 Full table: [redteam-report.md](redteam-report.md).
 
+Do the guardrails and the passage quarantine cost accuracy? The live eval after the change (3 runs,
+keyword-only, [report](../eval/reports/2026-10-25_1906_bm25_answers_claude-haiku-5-5.md)) scored 100% (162/162),
+retrieval 45/45, refusals 27/27, the same as the v1.6.0 release run.
+
 The shared corpus was written alongside the patterns, so it flatters. This app's 21 cases were written after the
 patterns were frozen and run once; the result above is the first run.
 
