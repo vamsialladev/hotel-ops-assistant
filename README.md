@@ -12,6 +12,11 @@
 > **Stage 1 of a simulated client engagement** for a fictional hotel group with two properties, a beach resort and a mountain lodge. All documents are synthetic and written to mirror real hotel operations. Business value is a projection from stated assumptions, not a measured result. Discovery and scoping (stage 0): [hotel-ai-discovery](https://github.com/vamsialladev/hotel-ai-discovery).
 
 <!-- DEMO-VIDEO -->
+<!-- AI-NARRATED-DEMO:START -->
+<a href="docs/video/demo-ai-voice.mp4"><img src="docs/video/demo-ai-voice.jpg" alt="Demo video, AI-narrated: asking whether a guest can bring their dog, the cited answer with its source, the follow-up for Mountain Lodge, and the results page" width="720"></a>
+
+**Demo video (1:13, AI-narrated):** [watch the MP4](docs/video/demo-ai-voice.mp4) · captions burned in ([text](docs/video/demo-ai-voice.srt)). The narrator is an AI voice (Kokoro); my own-voice version will replace it.
+<!-- AI-NARRATED-DEMO:END -->
 
 <p align="center"><img src="docs/images/demo.gif" alt="On the live app, a front-desk agent at Beach Resort clicks 'Can a guest bring their dog?' and a cited answer streams in with its source chip and related questions" width="760"></p>
 <p align="center"><em>The live app: one click on a suggested question, a cited answer from the hotel's own policy in about two seconds.</em></p>
@@ -38,7 +43,7 @@
 |---|---|
 | **Recruiter or hiring manager** | [At a glance](#at-a-glance) → [Results](#results) → [Skills demonstrated](#skills-demonstrated) → [Case study](https://vamsialla.com/projects/hotel-ops-assistant.html) |
 | **Hotel manager or operations lead** | [The problem](#the-problem) → [What it does](#what-it-does) → [Business case](docs/BUSINESS_CASE.md) |
-| **Engineer** | [Architecture](#architecture) → [Results](#results) → [Run it locally](#run-it-locally) → [Decision log](docs/DECISIONS.md) |
+| **Engineer** | [Architecture](#architecture) → [Results](#results) → [Run it locally](#run-locally) → [Decision log](docs/DECISIONS.md) |
 
 ---
 
@@ -51,6 +56,8 @@ A guest at the front desk asks: *"Can I bring my dog?"*
 - An **outdated 2024 document** still on the shared drive says *no pets at all*.
 
 Staff have to find the right document for the right hotel while the guest waits. Multiply that by dozens of questions a day across pets, late checkout, parking, fees, spa, dining and events.
+
+I built this because the front-desk lead at Mountain Lodge told me about the last question they couldn't answer: the early check-in fee was only in the staff notes, so they radioed the night manager and the guest waited about four minutes ([discovery](https://github.com/vamsialladev/hotel-ai-discovery/blob/main/docs/DISCOVERY.md)).
 
 ## What it does
 
@@ -92,28 +99,6 @@ Staff have to find the right document for the right hotel while the guest waits.
 |---|---|---|
 | <img src="docs/images/assistant-light.png" alt="Assistant page in light mode with an answered question" width="300"> | <img src="docs/images/assistant-dark.png" alt="Assistant page in dark mode answering where to park an RV at Mountain Lodge" width="300"> | <img src="docs/images/phone.png" alt="Assistant at phone width with the property switch at the top and an answered question" width="180"> |
 </details>
-
-## Business value
-
-Projected net value per year, as a range rather than a single number:
-
-| Scenario | 2 properties | 100-property group |
-|---|---|---|
-| Pessimistic (20 lookups/day, 1 min saved) | $8,524 | $423,187 |
-| **Base** (40 lookups/day, 2.5 min saved) | **$31,887** | **$1,591,375** |
-| Optimistic (60 lookups/day, 3.5 min saved) | $66,451 | $3,319,562 |
-
-The AI cost per question is **measured** ($0.00016–0.00019); every other input is an assumption. At 2 properties the running cost is about $246 a year, so even the pessimistic case returns many times its cost.
-
-<details>
-<summary>Calculator output: scenarios for 100 properties</summary>
-<br>
-<img src="docs/images/business-case.png" alt="Business case calculator showing pessimistic, base and optimistic scenarios for 100 properties" width="760">
-</details>
-
-**Who benefits:** front-desk staff (less searching while a guest waits), managers (fewer wrong-answer refunds and fewer radio calls), new hires (productive sooner). **How a pilot would measure it:** time per lookup by shadowing before and after, requests per shift from the request log, and refunds tagged "wrong information" against the 3 months before.
-
-These are **projections from stated assumptions**, not measured results. [BUSINESS_CASE.md](docs/BUSINESS_CASE.md) has the full model, the policy gaps to raise with the client (including credits between $51 and $200 that no rule covers), a 2-week pilot plan, **success metrics with go / no-go criteria**, and risks. Run `python scripts/business_case.py --scenarios` to change the assumptions.
 
 ## Architecture
 
@@ -293,6 +278,28 @@ next question; reports in `eval/reports/multiturn-2026-10-24-*`.
 
 Every finding is in [DECISIONS.md](docs/DECISIONS.md) with its context, decision, tradeoff and result.
 
+## Business value
+
+Projected net value per year, as a range rather than a single number:
+
+| Scenario | 2 properties | 100-property group |
+|---|---|---|
+| Pessimistic (20 lookups/day, 1 min saved) | $8,524 | $423,187 |
+| **Base** (40 lookups/day, 2.5 min saved) | **$31,887** | **$1,591,375** |
+| Optimistic (60 lookups/day, 3.5 min saved) | $66,451 | $3,319,562 |
+
+The AI cost per question is **measured** ($0.00016–0.00019); every other input is an assumption. At 2 properties the running cost is about $246 a year, so even the pessimistic case returns many times its cost.
+
+<details>
+<summary>Calculator output: scenarios for 100 properties</summary>
+<br>
+<img src="docs/images/business-case.png" alt="Business case calculator showing pessimistic, base and optimistic scenarios for 100 properties" width="760">
+</details>
+
+**Who benefits:** front-desk staff (less searching while a guest waits), managers (fewer wrong-answer refunds and fewer radio calls), new hires (productive sooner). **How a pilot would measure it:** time per lookup by shadowing before and after, requests per shift from the request log, and refunds tagged "wrong information" against the 3 months before.
+
+These are **projections from stated assumptions**, not measured results. [BUSINESS_CASE.md](docs/BUSINESS_CASE.md) has the full model, the policy gaps to raise with the client (including credits between $51 and $200 that no rule covers), a 2-week pilot plan, **success metrics with go / no-go criteria**, and risks. Run `python scripts/business_case.py --scenarios` to change the assumptions.
+
 ## Design at scale
 
 What exists today is marked **Built**; anything else is **Roadmap**.
@@ -304,6 +311,54 @@ What exists today is marked **Built**; anything else is **Roadmap**.
 | **10K → 1M users** | **What breaks first:** free hosting sleeps, and each app instance loads the whole index into memory and enforces caps per session. **Built:** an always-on Docker image, the index fingerprint so a restart never serves a stale index, the persistent Postgres log, per-session and daily caps. **Roadmap:** build the index once in CI and load it read-only from object storage; run several stateless app containers behind a load balancer; move caps to per-property daily budgets in the database; add prompt caching and a request queue with back-off for model rate limits at check-in peaks. |
 | **Monitoring, alerting, hallucination and off-brand detection** | **Built:** every answer is checked before display (cited passage exists, numbers appear in the passages, manager rules quoted from the documents); the Admin and Operations pages show errors, cost, first-question success and threshold warnings; a daily health check opens a GitHub issue when the app is down ([hotel-ai-handoff](https://github.com/vamsialladev/hotel-ai-handoff)); eval gates with latency and cost budgets run in CI. **Roadmap:** off-brand tone detection with an LLM judge, only once it agrees with human labels (the stage 3 judge reached kappa 0.29, so nothing is gated on it). |
 | **Failure modes and rollback** | **Built:** 30 s timeout + SDK retries and a safe error message; emergencies skip the model and get a fixed safety message; `KILL_SWITCH` turns the AI off without a deploy; caps stop a cost spike. Rollback: revert the commit on `main` (Streamlit Cloud redeploys) or run the previous release tag's Docker image. |
+
+## Run locally
+
+**Requirements:** Python 3.12 and an [Anthropic API key](https://console.anthropic.com).
+
+**One click on Windows (after the first setup below):** double-click `run_app.bat`, or run `.\run_app.ps1`. It uses the `.venv`, checks that `.env` exists, builds the index if it's missing, and opens the app at http://localhost:8501.
+
+**Windows (PowerShell), first setup**
+```powershell
+git clone https://github.com/vamsialladev/hotel-ops-assistant.git
+cd hotel-ops-assistant
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+copy .env.example .env      # then open .env and add your API key
+python -m src.ingest        # build the index
+streamlit run app.py        # opens http://localhost:8501
+```
+
+**macOS / Linux**
+```bash
+git clone https://github.com/vamsialladev/hotel-ops-assistant.git
+cd hotel-ops-assistant
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+cp .env.example .env        # then add your API key
+python -m src.ingest
+streamlit run app.py
+```
+
+For the light keyword-only install (what Streamlit Cloud runs), use `pip install -r requirements.txt` and set `USE_EMBEDDINGS=false`.
+
+**Docker** (full hybrid search, CPU only)
+```bash
+docker build -t hotel-ops-assistant .
+docker run -p 8501:8501 --env-file .env hotel-ops-assistant
+```
+
+## Limitations and roadmap
+
+- **Languages:** Spanish is supported with a hotel vocabulary list (Project 4); other languages are still refused before the model, and the embedding model is English-only.
+- **OCR** for scanned documents (currently flagged, not read).
+- **Live demo is keyword-only** on the free tier; the jacket and Spanish questions need hybrid.
+- **The eval and visitor questions were written by the same person who wrote the documents**, which flatters the scores; held-out questions from people who haven't seen the documents are on the [validation checklist](docs/VALIDATION_CHECKLIST.md).
+- **Word-list grading** has known false positives; an LLM judge calibrated against human labels is **Project 3**.
+- **Persistent logs need `DATABASE_URL`** (Neon on the live app); name redaction is pattern-based and can miss a bare name with no cue ([decision 55](docs/DECISIONS.md)).
+- **Staff sign-in is a shared password**, not individual accounts; a client deployment would use SSO with OIDC ([decision 54](docs/DECISIONS.md)).
+- **Project 2** uses this assistant as a tool in a guest-email agent.
 
 ## Skills demonstrated
 
@@ -352,43 +407,6 @@ hotel-ops-assistant/
 ├── .devcontainer/          # GitHub Codespaces setup (Python 3.12)
 ├── Dockerfile · Makefile · pyproject.toml · requirements*.txt
 └── SECURITY.md · CONTRIBUTING.md · CHANGELOG.md · LICENSE · .env.example
-```
-
-## Run it locally
-
-**Requirements:** Python 3.12 and an [Anthropic API key](https://console.anthropic.com).
-
-**One click on Windows (after the first setup below):** double-click `run_app.bat`, or run `.\run_app.ps1`. It uses the `.venv`, checks that `.env` exists, builds the index if it's missing, and opens the app at http://localhost:8501.
-
-**Windows (PowerShell), first setup**
-```powershell
-git clone https://github.com/vamsialladev/hotel-ops-assistant.git
-cd hotel-ops-assistant
-py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements-dev.txt
-copy .env.example .env      # then open .env and add your API key
-python -m src.ingest        # build the index
-streamlit run app.py        # opens http://localhost:8501
-```
-
-**macOS / Linux**
-```bash
-git clone https://github.com/vamsialladev/hotel-ops-assistant.git
-cd hotel-ops-assistant
-python3.12 -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
-cp .env.example .env        # then add your API key
-python -m src.ingest
-streamlit run app.py
-```
-
-For the light keyword-only install (what Streamlit Cloud runs), use `pip install -r requirements.txt` and set `USE_EMBEDDINGS=false`.
-
-**Docker** (full hybrid search, CPU only)
-```bash
-docker build -t hotel-ops-assistant .
-docker run -p 8501:8501 --env-file .env hotel-ops-assistant
 ```
 
 ## Configuration
@@ -568,17 +586,6 @@ CI runs on the light install (no PyTorch): lint, format check, `pip-audit`, test
 ## Security and privacy
 
 Only synthetic policy documents are indexed; no guest or payment data. Each question and its top 5 passages are sent to the API; earlier turns never are. Secrets stay in `.env` or Streamlit secrets. Questions and answers are logged for quality, with secret values masked and **personal data redacted before storage** (emails, phone and card-like numbers, names; booking IDs hashed); with `DATABASE_URL` they are kept 30 days in Postgres, otherwise in temporary files until restart. No accounts are collected; staff sign-in is a shared password (a client would use SSO, [decision 54](docs/DECISIONS.md)). Emergencies never reach the model. Output is escaped, the public demo has per-session and daily caps, and the Admin page is password-protected with a lockout. [SECURITY.md](SECURITY.md) has the threat model and the OWASP Top 10 for LLM Applications mapping.
-
-## Limitations and roadmap
-
-- **Languages:** Spanish is supported with a hotel vocabulary list (Project 4); other languages are still refused before the model, and the embedding model is English-only.
-- **OCR** for scanned documents (currently flagged, not read).
-- **Live demo is keyword-only** on the free tier; the jacket and Spanish questions need hybrid.
-- **The eval and visitor questions were written by the same person who wrote the documents**, which flatters the scores; held-out questions from people who haven't seen the documents are on the [validation checklist](docs/VALIDATION_CHECKLIST.md).
-- **Word-list grading** has known false positives; an LLM judge calibrated against human labels is **Project 3**.
-- **Persistent logs need `DATABASE_URL`** (Neon on the live app); name redaction is pattern-based and can miss a bare name with no cue ([decision 55](docs/DECISIONS.md)).
-- **Staff sign-in is a shared password**, not individual accounts; a client deployment would use SSO with OIDC ([decision 54](docs/DECISIONS.md)).
-- **Project 2** uses this assistant as a tool in a guest-email agent.
 
 ## Documentation
 

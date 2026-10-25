@@ -1,6 +1,6 @@
 # Video script: Hotel Operations Knowledge Assistant (about 85 seconds)
 
-I record this myself, in my own voice, over a screen recording of the live app. No AI voice. Setup and tips:
+I record this myself, in my own voice, over a screen recording of the live app. Until I do, the AI-narrated version is in `docs/video/demo-ai-voice.mp4` (narration at the end of this file). Setup and tips:
 `RECORDING_GUIDE.md` in my portfolio folder. Read it through twice, then talk from the bullets, not word for word.
 `/` marks a natural pause. Aim for 140–160 words a minute.
 
@@ -37,3 +37,16 @@ keyword-only, 3 runs).
 
 I built a hotel front-desk assistant that answers only from the hotel's own documents, cites every fact, and now
 understands follow-ups like "what about at Mountain Lodge?" without sending the conversation to the model.
+
+## AI narration (used in docs/video/demo-ai-voice.mp4)
+
+Until I record my own voice, the demo video (1:13) is narrated by an AI voice (Kokoro `af_heart`, local) and labelled "AI-narrated" on screen and here. It was recorded from the live app with Playwright; the captions are the narration, timed to the voice. `/` marks a pause.
+
+| Step | Narration |
+|---|---|
+| problem | This is for front-desk staff at a hotel. / A guest is standing at the desk, and they need the right answer about a policy, fast. / It's a simulated hotel group, and the documents are made up. |
+| search | I'll ask whether a guest can bring their dog. / It searches only this hotel's documents, / and it shows me exactly which passages it used. / There's the source, with the policy text. |
+| cite | So the answer's short. / Dogs up to forty pounds, and a seventy-five dollar fee per stay. / Every fact has a citation, and it won't answer from anywhere else. |
+| follow | Now a follow-up. / I just ask, what about at Mountain Lodge? / It works out I mean the dog question, at the other hotel, / and it shows me how it understood me. / Different hotel, different rule. |
+| proof | Does it hold up? / I test it on fifty-four questions, three runs each, / and it gets ninety-eight to a hundred percent of the answers right, / for under twenty cents per thousand questions. |
+| live | It's live, with no sign-in. / The link's below, and so is the code. |

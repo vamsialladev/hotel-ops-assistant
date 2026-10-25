@@ -1,0 +1,84 @@
+1
+00:00:03,000 --> 00:00:05,261
+This is for front-desk staff at a hotel.
+
+2
+00:00:06,111 --> 00:00:11,082
+A guest is standing at the desk, and they need the right answer about
+a policy, fast.
+
+3
+00:00:11,932 --> 00:00:15,409
+It's a simulated hotel group, and the documents are made up.
+
+4
+00:00:16,016 --> 00:00:18,149
+I'll ask whether a guest can bring their dog.
+
+5
+00:00:18,999 --> 00:00:21,431
+It searches only this hotel's documents,
+
+6
+00:00:22,281 --> 00:00:25,033
+and it shows me exactly which passages it used.
+
+7
+00:00:25,883 --> 00:00:28,166
+There's the source, with the policy text.
+
+8
+00:00:28,766 --> 00:00:30,153
+So the answer's short.
+
+9
+00:00:31,003 --> 00:00:35,013
+Dogs up to forty pounds, and a seventy-five dollar fee per stay.
+
+10
+00:00:35,863 --> 00:00:39,703
+Every fact has a citation, and it won't answer from anywhere else.
+
+11
+00:00:40,313 --> 00:00:41,401
+Now a follow-up.
+
+12
+00:00:42,251 --> 00:00:44,640
+I just ask, what about at Mountain Lodge?
+
+13
+00:00:45,490 --> 00:00:48,797
+It works out I mean the dog question, at the other hotel,
+
+14
+00:00:49,647 --> 00:00:51,631
+and it shows me how it understood me.
+
+15
+00:00:52,481 --> 00:00:54,316
+Different hotel, different rule.
+
+16
+00:00:54,922 --> 00:00:55,967
+Does it hold up?
+
+17
+00:00:56,817 --> 00:00:59,911
+I test it on fifty-four questions, three runs each,
+
+18
+00:01:00,761 --> 00:01:04,153
+and it gets ninety-eight to a hundred percent of the answers right,
+
+19
+00:01:05,003 --> 00:01:07,392
+for under twenty cents per thousand questions.
+
+20
+00:01:08,000 --> 00:01:09,749
+It's live, with no sign-in.
+
+21
+00:01:10,599 --> 00:01:12,605
+The link's below, and so is the code.
