@@ -4,7 +4,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/). Versions follow
 
 ## [Unreleased]
 ### Added (final stage: guardrails, tracing, red team; 1.7.0)
-- Shared guardrails from [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform) v0.1.2
+- Shared guardrails from [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform) v0.1.3
   (`src/ops.py`): input checks before the rewrite and the API, output checks after the model. Decision 60.
 - Passages pass through the shared quarantine before the model (the planted front desk note). Decision 61.
 - New outcome `blocked` with refusal reason `guardrail`. Decision 62.

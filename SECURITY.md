@@ -81,7 +81,7 @@ per-property access is planned for Project 4.
 
 ## Guardrails, tracing and red team (1.7.0)
 
-Shared with every hotel app through [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform) v0.1.2,
+Shared with every hotel app through [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform) v0.1.3,
 wired in `src/ops.py`:
 
 - **Before the API:** length, language (English, Spanish), injection/jailbreak (planted sentences cut out; blocked
