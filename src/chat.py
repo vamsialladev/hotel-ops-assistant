@@ -62,6 +62,7 @@ class Turn:
     first: bool = False  # the session's first message
     rewritten: str | None = None  # the standalone question used for retrieval, when it differs from `question`
     rewrite_method: str = "none"  # none | rule | llm
+    trace_id: str | None = None  # the shared ops trace (hotel-ai-platform): "Reference: 4f1c9a2e" on errors
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
 
 

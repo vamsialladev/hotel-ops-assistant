@@ -237,4 +237,4 @@ def test_downloads_and_log_since():
 
 
 def test_refusal_reasons_are_explained():
-    assert set(REFUSAL_REASONS) == {"not_in_documents", "off_topic", "daily_cap", "session_cap"}
+    assert set(REFUSAL_REASONS) == {"not_in_documents", "off_topic", "daily_cap", "session_cap", "guardrail"}

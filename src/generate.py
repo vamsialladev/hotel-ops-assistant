@@ -134,6 +134,7 @@ class AnswerStream:
         self.result = None
         self.time_to_first_token = None
         self.total_time = None
+        self.stop_reason = None  # recorded on the model_call span
 
     def __iter__(self):
         start = self.clock()
@@ -150,6 +151,7 @@ class AnswerStream:
                 yield text
             message = stream.get_final_message()
         self.total_time = self.clock() - start
+        self.stop_reason = message.stop_reason
         if message.stop_reason == "refusal":
             self.result = {**refusal_result(), "usage": build_result("", self.chunks, message.usage)["usage"]}
         else:

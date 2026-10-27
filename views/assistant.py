@@ -3,10 +3,11 @@
 import logging
 
 import streamlit as st
+from hotelplatform import bots, jsonlog, tracing
 
-from src import assist, intents, rewrite, service, share
+from src import assist, intents, ops, rewrite, service, share
 from src.chat import FEEDBACK_REASONS, Turn, remaining, validate_question
-from src.config import MAX_QUESTION_CHARS, MAX_QUESTIONS_PER_SESSION
+from src.config import LLM_MODEL, MAX_QUESTION_CHARS, MAX_QUESTIONS_PER_SESSION
 from src.display import esc, quote_markdown, safe_markdown, scope_label, source_chip_html, source_label
 from src.errors import UNAVAILABLE, category, classify, friendly, private_detail, record_error, safe_message
 from src.escalation import RULES_BY_ID, is_safety
@@ -122,6 +123,7 @@ def feedback(turn_id: str, helpful: bool, reason: str | None = None):
             turn_id=turn.id,
             source=turn.source,
         )
+        ops.feedback(turn.trace_id, helpful, reason)  # linked to the request's trace (Admin -> Traces)
         turn.feedback, turn.reason = ("up" if helpful else "down"), reason
 
 
@@ -317,7 +319,8 @@ def log_turn(turn: Turn, kind: str, **fields):
     asked, whether it was the session's first, and the follow-ups shown under it."""
     cited = (turn.result or {}).get("citations", [])
     topic = topic_of(cited[0], catalog) if cited else None
-    log_usage(
+    trace = tracing.current()
+    record = log_usage(
         service.usage_record(
             turn.question,
             turn.property,
@@ -333,9 +336,12 @@ def log_turn(turn: Turn, kind: str, **fields):
             follow_up_label=turn.suggestion_label,
             rewritten=turn.rewritten,
             rewrite_method=turn.rewrite_method,
+            safety_flags=ops.safety_flags(trace),
+            trace_id=trace.trace_id if trace else None,
             **fields,
         )
     )
+    ops.finish(trace, record)  # the shared ops row + this request's spans; never blocks the page
 
 
 def understand(question: str, prop: str) -> rewrite.Rewrite:
@@ -415,11 +421,26 @@ def share_panel():
 
 
 def handle(raw: str, prop: str, source: str = "typed"):
+    """One question = one trace (hotel-ai-platform): guardrails, rewrite, retrieval, model and output checks are
+    its spans, and the reference is shown if anything fails."""
+    with ops.start(chat.session_id):
+        _handle(raw, prop, source)
+
+
+def _handle(raw: str, prop: str, source: str = "typed"):
     question, error = validate_question(raw, MAX_QUESTION_CHARS)
     if error:
         st.warning(error, icon=":material/edit_note:")
         return
-    turn = Turn(question, prop, source=source)
+    trace = tracing.current()
+    turn = Turn(question, prop, source=source, trace_id=trace.trace_id)
+    verdict = ops.check_question(question)  # injection, data requests, card numbers, language: before anything else
+    if not verdict.allowed:
+        turn.result = {"answer": verdict.message, "found": False, "citations": []}
+        finish(turn, "refusal", pre_api=True, guardrail=verdict.reason)
+        render_turn(turn)
+        return
+    asked_text = verdict.text  # contact details replaced, planted sentences cut: what the rewrite and model see
     intent = intents.detect(question)
     if intent:  # hi / thanks / what can you do: instant, free, not counted toward the limits
         turn.result = {"answer": intents.reply(intent, b.property_name(prop)), "found": False, "citations": []}
@@ -431,7 +452,10 @@ def handle(raw: str, prop: str, source: str = "typed"):
         log_turn(turn, "answer", pre_api=True, error="session_cap", error_message=SESSION_LIMIT)
         return
     previous = chat.current.turns[-1].property if chat.current.turns else None
-    rw = understand(question, prop)
+    rw = understand(asked_text, prop)
+    trace.record("rewrite", rw.seconds * 1000, method=rw.method, changed=rw.changed, property=rw.property,
+                 question=rw.question, tokens_in=rw.usage["input_tokens"],
+                 tokens_out=rw.usage["output_tokens"])  # fmt: skip
     turn.property, turn.rewrite_method = rw.property, rw.method
     turn.rewritten = rw.question if rw.changed else None
     usage_fields = {"rewrite_usage": rw.usage}
@@ -443,7 +467,12 @@ def handle(raw: str, prop: str, source: str = "typed"):
             st.html(property_tag(prop))
         st.markdown(safe_markdown(question))
     with st.chat_message("assistant", avatar=BOT_AVATAR):
-        prep = service.prepare(retriever, standalone, prop)
+        with trace.span("retrieval", query=standalone, property=prop, mode=retriever.mode) as span:
+            prep = service.prepare(retriever, standalone, prop)
+            span.set(
+                blocked=prep["blocked"], safety=bool(prep.get("safety")), quarantined=prep.get("quarantined", 0),
+                top=[{"source": h["source"], "section": h["section"], "score": h.get("score")} for h in prep["hits"]],
+            )  # fmt: skip
         if is_safety(question) and not prep.get("safety"):  # the message as typed decides an emergency too
             prep = {"blocked": True, "safety": True, "hits": [], "signals": prep["signals"]}
         if prep["blocked"]:  # off-topic or gibberish: answered without an API call
@@ -459,20 +488,33 @@ def handle(raw: str, prop: str, source: str = "typed"):
             run = AnswerStream(standalone, prop, prep["hits"])  # the model sees only this question + passages
             streamed = st.empty()  # cleared for a refusal, which gets the recovery message instead
             try:
-                with streamed:
+                with streamed, trace.span("model_call", model=LLM_MODEL, passages=len(prep["hits"])) as span:
                     shown = st.write_stream(stream_text(run, waiting))
+                    usage = (run.result or {}).get("usage", {})  # getattr: tracing never breaks an answer
+                    span.set(tokens_in=usage.get("input_tokens"), tokens_out=usage.get("output_tokens"),
+                             ttft_s=getattr(run, "time_to_first_token", None),
+                             stop_reason=getattr(run, "stop_reason", None))  # fmt: skip
             except Exception as exc:  # never show raw errors to visitors
                 waiting.empty()
                 code = classify(exc)
                 log.error("answer failed: %s (%s) %s", code, category(code), private_detail(exc))
                 record_error("Assistant", exc)
-                turn.error = friendly(code)
+                jsonlog.exception(exc, trace_id=trace.trace_id, where="answer")
+                turn.error = f"{friendly(code)} Reference: {trace.reference}"
                 fields = {"hits": prep["hits"], "error": code, "error_message": safe_message(exc), **usage_fields}
                 log_turn(turn, "answer", **fields)
                 chat.add(turn)
                 render_answer(turn)
                 return
             turn.result = service.finalize(standalone, prop, run.result)
+            if turn.result["found"]:  # promises, PII the guest didn't give, off-brand text, uncited answers
+                checked = ops.check_answer(turn.result["answer"], prep["hits"], turn.result["citations"], standalone)
+                if not checked.allowed:
+                    turn.result = {**turn.result, "answer": checked.text, "found": False, "citations": []}
+                elif checked.text != turn.result["answer"]:
+                    turn.result = {**turn.result, "answer": checked.text}
+                if checked.text != run.result["answer"]:
+                    streamed.empty()  # the streamed text is replaced, not left on screen above the checked one
             kind = "answer" if turn.result["found"] else "refusal"
             total = run.total_time + rw.seconds  # the visitor waited for the rewrite too
             finish(turn, kind, hits=prep["hits"], ttft=run.time_to_first_token, total=total, **usage_fields)
@@ -493,6 +535,11 @@ if (switch := st.session_state.pop("switch_property", None)) in props:  # set by
 if shared_token := st.query_params.get("share"):
     ui.header(b.name, b.tagline)
     render_shared(shared_token)
+    st.stop()
+
+if bots.is_bot(st.query_params):  # streamlit-keep-awake: the page and index load; nothing is asked or logged
+    ui.header(b.name, b.tagline)
+    st.caption("Awake.")
     st.stop()
 
 ui.header(b.name, b.tagline)

@@ -21,12 +21,14 @@ RESULTS = {
     "greeting": "🔵 Greeting",
     "error": "🔴 Error",
     "cap": "🟣 Cap",
+    "blocked": "🛡️ Blocked",
 }
 REFUSAL_REASONS = {
     "not_in_documents": "Not in the documents: the model found no answer in the retrieved passages",
     "off_topic": "Off-topic: stopped by the scope check before the API (no API call)",
     "daily_cap": "Daily question cap reached (no API call)",
     "session_cap": "Session question limit reached (no API call)",
+    "guardrail": "Blocked by a guardrail (injection, data request, card number...) before the API",
 }
 CAPS = ("daily_cap", "session_cap")
 
@@ -36,6 +38,8 @@ def outcome_of(record: dict) -> str:
     works it out for older records from kind, error, refused and pre_api."""
     if record.get("outcome") in RESULTS:
         return record["outcome"]
+    if record.get("guardrail"):
+        return "blocked"
     error = record.get("error")
     if error in CAPS:
         return "cap"
@@ -58,6 +62,8 @@ def refusal_reason(record: dict) -> str | None:
     outcome = outcome_of(record)
     if outcome == "cap":
         return record.get("error")
+    if outcome == "blocked":
+        return "guardrail"
     if outcome == "off_topic":
         return "off_topic"
     if outcome == "refused":
