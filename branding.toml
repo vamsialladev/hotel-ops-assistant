@@ -20,6 +20,8 @@ accent_dark = "#DDB874"
 
 [links]
 case_study = "https://vamsialla.com/projects/hotel-ops-assistant.html"
+demo = "https://vamsialla.com/projects/hotel-ops-assistant.html#demo"
+portfolio = "https://vamsialla.com"
 github = "https://github.com/vamsialladev/hotel-ops-assistant"
 decisions = "https://github.com/vamsialladev/hotel-ops-assistant/blob/main/docs/DECISIONS.md"
 linkedin = "https://www.linkedin.com/in/vamsi-alla/"
