@@ -33,7 +33,7 @@
 |---|---|
 | **Problem** | Staff search scattered PDFs, menus and notes while a guest waits, and the rules differ by hotel. Wrong answers turn into refunds and complaints. |
 | **Solution** | Pick your property, ask in plain English, and get a 1–4 sentence answer that cites every fact. It refuses when the documents don't say, corrects wrong facts in the question, and points to a manager for refunds and safety. |
-| **Quality (measured)** | 54-question eval, 3 runs, live demo's keyword-only search: **100% answer accuracy** in v1.6.0 (98% in v1.5.0; hybrid 97% in v1.5.0); 100% of escalation rules correct; full answer p95 **2.9s**. Held-out questions added later: 67% → 85% after the stage 4 (production) fixes (Spanish, emergencies). **First-question success 100%** on 49 questions a visitor types first (43% before the coverage work). 378 tests, 97% coverage. |
+| **Quality (measured)** | 54-question eval, 3 runs, live demo's keyword-only search: **100% answer accuracy** in v1.6.0 (98% in v1.5.0; hybrid 97% in v1.5.0); 100% of escalation rules correct; full answer p95 **2.9s**. Held-out questions added later: 67% → 85% after the stage 4 (production) fixes (Spanish, emergencies). **First-question success 100%** on 49 questions a visitor types first (43% before the coverage work). 449 tests, 97% coverage. |
 | **Cost (measured)** | **$0.18 per 1,000 questions** (v1.6.0 release run, Claude Haiku 5.5, 3 runs) |
 | **Projected value** | ~$32K/yr net for 2 properties (range $8.5K–$66K); ~$1.6M/yr at 100-property scale ([assumptions](docs/BUSINESS_CASE.md)) |
 
@@ -390,7 +390,7 @@ docker run -p 8501:8501 --env-file .env hotel-ops-assistant
 | Measuring quality, not guessing | [Eval harness](eval/), [Results](#results), raw answers saved per run |
 | Debugging with evidence | [DECISIONS.md](docs/DECISIONS.md) 13–49: grader bugs, the $75 root cause, the Streamlit startup hang, an uninstallable pin, a Windows file race reproduced with two processes, a live-only crash reproduced by updating a running app in place |
 | Shipping a product people can use | In-app guidance tested on first-time visitor questions, multi-page app, streaming, light/dark, phone layout, white-label branding |
-| Production engineering habits | 378 tests, CI with audit, coverage and eval gates (incl. latency and cost budgets), Docker compose with Postgres, redacted persistent logs, kill switch, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
+| Production engineering habits | 449 tests, CI with audit, coverage and eval gates (incl. latency and cost budgets), Docker compose with Postgres, redacted persistent logs, kill switch, error boundaries, owner monitoring, cost caps, [SECURITY.md](SECURITY.md) |
 | Translating tech into business value | [BUSINESS_CASE.md](docs/BUSINESS_CASE.md), the Insights page for managers |
 
 ## Project structure
@@ -588,7 +588,7 @@ Without `DATABASE_URL`, Streamlit Cloud keeps logs and the error list only until
 ## Testing and quality
 
 ```bash
-python -m pytest -q --cov                 # 378 tests (+8 Postgres tests in CI), 97% coverage
+python -m pytest -q --cov                 # 449 tests in CI (8 of them against Postgres), 97% coverage
 python -m eval.run_eval                    # retrieval, scope and escalation eval (free)
 python -m eval.run_eval --answers --runs 3 --price-in 0.10 --price-out 0.50
 ruff check . && ruff format --check .      # lint and format
