@@ -318,6 +318,20 @@ What exists today is marked **Built**; anything else is **Roadmap**.
 | **Observability** | **Built (1.7.0):** every question is one trace (OpenTelemetry-shaped IDs) with a span per step: input guardrails → follow-up rewrite → retrieval (query, top passages, scores, quarantined count) → model call (model, tokens, time to first word, stop reason) → output guardrails. Rows go to the shared `ops_request_log` / `ops_trace_span` tables (one Neon database for all the hotel apps, `app` column), PII removed before the write, batched by a background thread so logging never slows or breaks an answer, 30-day retention. Errors show "Reference: 4f1c9a2e"; Admin → **Traces** finds it and draws the waterfall. Structured JSON log lines (app start + version, config set/missing, dependencies, slow requests over the 4 s p95 budget, caps, exceptions with redacted stacks). A daily Action in streamlit-keep-awake opens an issue if the error rate passes 5%. **Roadmap:** an OpenTelemetry exporter to a real collector once traffic outgrows one free database. |
 | **Failure modes and rollback** | **Built:** 30 s timeout + SDK retries and a safe error message; emergencies skip the model and get a fixed safety message; `KILL_SWITCH` turns the AI off without a deploy; caps stop a cost spike. Rollback: revert the commit on `main` (Streamlit Cloud redeploys) or run the previous release tag's Docker image. |
 
+## Security & guardrails
+
+**Guardrails (1.7.0, shared with every hotel app through [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform)):**
+before the API, injection and jailbreak sentences are cut out (and the message blocked if no real question is
+left), requests for other guests' data, secrets, roles or bulk actions are blocked, card and ID numbers are blocked
+and contact details replaced. Planted instructions in documents are removed before the model reads them. After the
+model, promises only staff can make, leaked contact details, prompt leaks and uncited answers are caught. **Red
+team** ([docs/RED_TEAM.md](docs/RED_TEAM.md), in CI): the 48-case shared corpus passes 48/48 through this app's
+pipeline; this app's own 21 held-out cases pass 19/21 (13 of 15 attacks stopped, 0 of 6 benign questions blocked).
+The 2 that get through are paraphrased attacks with no trigger words; they're listed, not tuned away. Across all 142
+of this app's eval questions, the guardrails block none.
+
+Only synthetic policy documents are indexed; no guest or payment data. Each question and its top 5 passages are sent to the API; earlier turns never are. Secrets stay in `.env` or Streamlit secrets. Questions and answers are logged for quality, with secret values masked and **personal data redacted before storage** (emails, phone and card-like numbers, names; booking IDs hashed); with `DATABASE_URL` they are kept 30 days in Postgres, otherwise in temporary files until restart. No accounts are collected; staff sign-in is a shared password (a client would use SSO, [decision 54](docs/DECISIONS.md)). Emergencies never reach the model. Output is escaped, the public demo has per-session and daily caps, and the Admin page is password-protected with a lockout. [SECURITY.md](SECURITY.md) has the threat model and the OWASP Top 10 for LLM Applications mapping.
+
 ## Run locally
 
 **Requirements:** Python 3.12 and an [Anthropic API key](https://console.anthropic.com).
@@ -588,20 +602,6 @@ pip-audit -r requirements.txt              # known vulnerabilities
 </details>
 
 CI runs on the light install (no PyTorch): lint, format check, `pip-audit`, tests with a 70% minimum coverage, a keyword-only retrieval regression gate (fails below 85%), the visitor first-question gate (fails below the measured 100%) and a check that every curated suggestion retrieves its topic. Dependabot opens weekly update pull requests. Before release, a scripted Playwright QA pass clicked through every public page in light and dark mode at laptop and phone width (251 checks: links, text, limits, errors, admin lockout, console errors).
-
-## Security and privacy
-
-**Guardrails (1.7.0, shared with every hotel app through [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform)):**
-before the API, injection and jailbreak sentences are cut out (and the message blocked if no real question is
-left), requests for other guests' data, secrets, roles or bulk actions are blocked, card and ID numbers are blocked
-and contact details replaced. Planted instructions in documents are removed before the model reads them. After the
-model, promises only staff can make, leaked contact details, prompt leaks and uncited answers are caught. **Red
-team** ([docs/RED_TEAM.md](docs/RED_TEAM.md), in CI): the 48-case shared corpus passes 48/48 through this app's
-pipeline; this app's own 21 held-out cases pass 19/21 (13 of 15 attacks stopped, 0 of 6 benign questions blocked).
-The 2 that get through are paraphrased attacks with no trigger words; they're listed, not tuned away. Across all 142
-of this app's eval questions, the guardrails block none.
-
-Only synthetic policy documents are indexed; no guest or payment data. Each question and its top 5 passages are sent to the API; earlier turns never are. Secrets stay in `.env` or Streamlit secrets. Questions and answers are logged for quality, with secret values masked and **personal data redacted before storage** (emails, phone and card-like numbers, names; booking IDs hashed); with `DATABASE_URL` they are kept 30 days in Postgres, otherwise in temporary files until restart. No accounts are collected; staff sign-in is a shared password (a client would use SSO, [decision 54](docs/DECISIONS.md)). Emergencies never reach the model. Output is escaped, the public demo has per-session and daily caps, and the Admin page is password-protected with a lockout. [SECURITY.md](SECURITY.md) has the threat model and the OWASP Top 10 for LLM Applications mapping.
 
 ## Documentation
 
